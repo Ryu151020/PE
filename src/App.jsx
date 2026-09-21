@@ -74,7 +74,7 @@ export default function App() {
 
   return (
     <AppCtx.Provider value={ctx}>
-      <div className="pe-app" style={{ height: "100vh", width: "100%", overflow: "hidden", fontFamily: APPLE_FONT, background: "#F4F7FE" }}>
+      <div title="pe-app" className="pe-app" style={{ height: "100vh", width: "100%", overflow: "hidden", fontFamily: APPLE_FONT, background: "#F4F7FE" }}>
         {body}
         <ToastHost />
         <ChipHoverPopover />
