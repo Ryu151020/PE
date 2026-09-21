@@ -23,7 +23,7 @@ export function AuthProvider({ children }) {
     if (!isConfigured()) {
       return {
         ok: false,
-        error: "Chưa cấu hình Google Sheets. Vui lòng bấm Cài đặt kết nối ở góc trên để liên kết / 请先配置 Google Sheets 连接",
+        error: "Chưa cấu hình liên kết Google Sheets / 未配置 Google Sheets 连接",
       };
     }
 

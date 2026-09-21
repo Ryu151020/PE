@@ -1,4 +1,4 @@
-import { CloudUpload, Database, RefreshCw, Settings, Sparkles } from "lucide-react";
+import { CloudUpload, Database, RefreshCw } from "lucide-react";
 import { btnPrimary, btnSecondary } from "../../lib/styles";
 
 function Shell({ children }) {
@@ -39,7 +39,7 @@ export function SheetsInitScreen({ hasLocal, onInit }) {
   );
 }
 
-export function SheetsErrorScreen({ error, onRetry, onSettings }) {
+export function SheetsErrorScreen({ error, onRetry }) {
   return (
     <Shell>
       <div className="v-stat-icon bg-bad-tint text-bad mx-auto"><RefreshCw size={26} /></div>
@@ -48,7 +48,6 @@ export function SheetsErrorScreen({ error, onRetry, onSettings }) {
       <div className="rad-12 bg-bad-tint mt-5 px-4 py-3 text-sm font-bold text-bad">{error || "Lỗi không xác định"}</div>
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         <button className={btnPrimary} onClick={onRetry}><RefreshCw size={16} /> Thử lại / 重试</button>
-        <button className={btnSecondary} onClick={onSettings}><Settings size={16} /> Cài đặt kết nối / 连接设置</button>
       </div>
     </Shell>
   );

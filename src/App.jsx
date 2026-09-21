@@ -8,7 +8,6 @@ import { Header } from "./components/layout/Header";
 import { Sidebar } from "./components/layout/Sidebar";
 import { ChipHoverPopover } from "./components/schedule/EmployeeChip";
 import { BootScreen, SheetsErrorScreen, SheetsInitScreen } from "./components/sync/BootScreens";
-import { SheetsSettingsModal } from "./components/sync/SheetsSettingsModal";
 import { ConfirmDialog } from "./components/ui/ConfirmDialog";
 import { ToastHost } from "./components/ui/Overlays";
 import { DataPage } from "./pages/DataPage";
@@ -29,7 +28,6 @@ export default function App() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [confirmState, setConfirmState] = useState(null); // { title, message, confirmLabel, danger, onConfirm }
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const pushToast = useCallback((message, type = "success") => {
     const id = Math.random().toString(36).slice(2);
@@ -47,7 +45,7 @@ export default function App() {
     setConfirmState({ message, onConfirm, title: opts?.title, confirmLabel: opts?.confirmLabel, danger: opts?.danger });
   }, []);
 
-  const ctx = { db, setDb, role, setRole, toasts, pushToast, dismissToast, confirmAction, sync, user, logout, openSyncSettings: () => setSettingsOpen(true) };
+  const ctx = { db, setDb, role, setRole, toasts, pushToast, dismissToast, confirmAction, sync, user, logout };
 
   let Page = SchedulePage;
   if (page === "machines") Page = MachinesPage;
@@ -59,7 +57,7 @@ export default function App() {
   let body;
   if (sync.phase === "booting") body = <BootScreen />;
   else if (sync.phase === "needs-init") body = <SheetsInitScreen hasLocal={sync.hasLocalCache} onInit={sync.initialize} />;
-  else if (sync.phase === "error" || !db) body = <SheetsErrorScreen error={sync.error} onRetry={sync.retryBoot} onSettings={() => setSettingsOpen(true)} />;
+  else if (sync.phase === "error" || !db) body = <SheetsErrorScreen error={sync.error} onRetry={sync.retryBoot} />;
   else {
     body = (
       <div className="flex h-full w-full">
@@ -81,7 +79,6 @@ export default function App() {
         <ToastHost />
         <ChipHoverPopover />
         <ConfirmDialog state={confirmState} onClose={() => setConfirmState(null)} />
-        <SheetsSettingsModal key={settingsOpen ? "open" : "closed"} open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       </div>
     </AppCtx.Provider>
   );

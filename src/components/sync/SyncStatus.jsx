@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AlertTriangle, Cloud, CloudOff, RefreshCw, Settings } from "lucide-react";
+import { AlertTriangle, Cloud, CloudOff, RefreshCw } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { getConfig } from "../../sync/gasClient";
 
@@ -15,7 +15,7 @@ const fmtTime = (t) => (t ? new Date(t).toLocaleTimeString("vi-VN") : "—");
 
 /* Header chip that shows the Google Sheets sync state (optimistic UI: saving happens in the background). */
 export function SyncStatus() {
-  const { sync, openSyncSettings } = useApp();
+  const { sync } = useApp();
   const [open, setOpen] = useState(false);
   const v = VIEW[sync.status] || VIEW.local;
   const host = (() => { try { return new URL(getConfig().url).host; } catch { return ""; } })();
@@ -32,10 +32,11 @@ export function SyncStatus() {
           <div className="mt-1 text-xs font-medium text-mute">{sync.connected ? `Đã kết nối · ${host || "web app"}` : "Chưa kết nối — dữ liệu chỉ lưu trên trình duyệt này / 未连接，数据仅保存在本浏览器"}</div>
           {sync.connected && <div className="mt-2 text-xs font-medium text-body">Đồng bộ lần cuối / 上次同步: <span className="font-bold text-ink">{fmtTime(sync.lastSyncedAt)}</span></div>}
           {sync.status === "error" && <div className="mt-2 rad-10 bg-bad-tint px-3 py-2 text-xs font-bold text-bad">{sync.error}</div>}
-          <div className="mt-3 flex flex-col gap-1">
-            {sync.connected && <button className="v-menu-item" onClick={() => { setOpen(false); sync.syncNow(); }}><span>Đồng bộ ngay / 立即同步</span><RefreshCw size={14} /></button>}
-            <button className="v-menu-item" onClick={() => { setOpen(false); openSyncSettings(); }}><span>Cài đặt kết nối / 连接设置</span><Settings size={14} /></button>
-          </div>
+          {sync.connected && (
+            <div className="mt-3 flex flex-col gap-1">
+              <button className="v-menu-item" onClick={() => { setOpen(false); sync.syncNow(); }}><span>Đồng bộ ngay / 立即同步</span><RefreshCw size={14} /></button>
+            </div>
+          )}
         </div>
       </>)}
     </div>

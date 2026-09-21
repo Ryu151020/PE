@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { BarChart3, CalendarClock, Cloud, Eye, EyeOff, Lock, Settings, User } from "lucide-react";
-import { SheetsSettingsModal } from "../components/sync/SheetsSettingsModal";
+import { BarChart3, CalendarClock, Cloud, Eye, EyeOff, Lock, User } from "lucide-react";
 import { APPLE_FONT, LOGO_FONT } from "../lib/styles";
-import { isConfigured } from "../sync/gasClient";
 import { useAuth } from "./AuthContext";
 
 const FEATURES = [
@@ -20,7 +18,6 @@ export function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [shake, setShake] = useState(0);
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // NOTE: no <form> element — sandboxed iframes (e.g. Claude artifacts) block form submission, so submit never fires.
   const submit = async () => {
@@ -69,20 +66,7 @@ export function LoginPage() {
       </section>
 
       {/* ---------- login card ---------- */}
-      <section className="relative flex flex-1 items-center justify-center" style={{ padding: 24 }}>
-        <div className="absolute right-6 top-6">
-          <button
-            type="button"
-            onClick={() => setSettingsOpen(true)}
-            className="flex items-center gap-2 rounded-full border border-line bg-white/90 px-3.5 py-1.5 text-xs font-bold text-ink shadow-sm backdrop-blur transition-all hover:bg-white hover:shadow"
-            title="Cài đặt kết nối Google Sheets / 设置连接"
-          >
-            <span className={`inline-block h-2 w-2 rounded-full ${isConfigured() ? "bg-ok" : "bg-warning"}`} />
-            <Settings size={14} className="text-mute" />
-            <span>{isConfigured() ? "Google Sheets" : "Cài đặt kết nối / 设置连接"}</span>
-          </button>
-        </div>
-
+      <section className="flex flex-1 items-center justify-center" style={{ padding: 24 }}>
         <div className="w-full" style={{ maxWidth: 440 }}>
           <div className="mb-6 flex items-center gap-3 lg:hidden" style={{ fontFamily: LOGO_FONT }}>
             <div className="v-logo-mark">P</div>
@@ -117,12 +101,6 @@ export function LoginPage() {
           </div>
           <p className="mt-6 text-center text-xs font-medium text-mute">© Intco · PE Scheduler</p>
         </div>
-
-        <SheetsSettingsModal
-          key={settingsOpen ? "open" : "closed"}
-          open={settingsOpen}
-          onClose={() => setSettingsOpen(false)}
-        />
       </section>
     </div>
   );
