@@ -1,5 +1,5 @@
-import { EMP_STATUS, MACHINE_STATUS, MOLD_STATUS, PLAN_STATUS, POSITIONS, RESIGN_REASONS, isActive } from "./constants";
-import { TODAY_KEY, addDaysKey, pad2 } from "./dates";
+import { EMP_STATUS, MACHINE_STATUS, MOLD_STATUS, PLAN_STATUS, POSITIONS, RESIGN_REASONS, isActive } from "./constants.js";
+import { TODAY_KEY, addDaysKey, pad2 } from "./dates.js";
 
 /* ============================================================
    SEED DATA

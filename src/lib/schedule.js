@@ -131,12 +131,15 @@ export function getCellValue(entry, colKey) {
   }
 }
 
-export function applyCellValue(entry, colKey, value, dateKey, employeesById, claimed) {
+export function applyCellValue(entry, colKey, value, dateKey, employeesById, claimed, ordersById) {
   const filterIds = (ids) => { const kept = [], skipped = []; (ids || []).forEach((id) => { const e = employeesById[id]; if (!e || !isSchedulableOn(e, dateKey)) { skipped.push({ id, reason: "đã nghỉ việc" }); return; } kept.push(id); }); return { kept, skipped }; };
   switch (colKey) {
     case "mold": return { entry: { ...entry, moldId: value || null }, skipped: [] };
-    case "order": return { entry: { ...entry, orderId: value || null }, skipped: [] };
-    case "filmRoll": return { entry: { ...entry, filmRollName: value || "" }, skipped: [] };
+    case "order": {
+      const ord = value && ordersById ? ordersById[value] : null;
+      return { entry: { ...entry, orderId: value || null, filmRollName: ord ? (ord.filmRollName || "") : "" }, skipped: [] };
+    }
+    case "filmRoll": return { entry, skipped: [] };
     case "dayOT": return { entry: { ...entry, dayShift: { ...entry.dayShift, overtimeHours: Number(value) || 0 } }, skipped: [] };
     case "nightOT": return { entry: { ...entry, nightShift: { ...entry.nightShift, overtimeHours: Number(value) || 0 } }, skipped: [] };
     case "dayWorkers": case "nightWorkers": {

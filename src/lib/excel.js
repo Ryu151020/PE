@@ -114,3 +114,165 @@ export function buildSchedulesFromRows(rows, machines, employees, molds, orders)
   });
   return byDate;
 }
+
+export function downloadEmployeeTemplate() {
+  const wb = XLSX.utils.book_new();
+  const sample = [
+    {
+      "Mã NV": "NV01",
+      "Tên VN": "Nguyễn Văn A",
+      "Tên Trung": "阮文安",
+      "Năm sinh": 1995,
+      "SĐT": "0912345678",
+      "Địa chỉ": "Hạ Long, Quảng Ninh",
+      "Ngày vào làm": "2024-01-15",
+      "Ngày rời đi": "",
+      "Lý do nghỉ": "",
+      "Vị trí": "Công nhân",
+      "Trạng thái": "Chính thức",
+      "Ghi chú": "Mẫu nhập liệu",
+    },
+  ];
+  const ws = XLSX.utils.json_to_sheet(sample);
+  XLSX.utils.book_append_sheet(wb, ws, "Nhân sự");
+  XLSX.writeFile(wb, "mau_nhan_su.xlsx");
+}
+
+export function downloadOrderTemplate() {
+  const wb = XLSX.utils.book_new();
+  const sample = [
+    {
+      "Mã đơn hàng": "DH-2024-001",
+      "Khuôn": "CPE-L",
+      "Size": "L",
+      "Tên cuộn màng": "MANG-PE-24",
+      "Trạng thái": "Đang xử lý",
+    },
+  ];
+  const ws = XLSX.utils.json_to_sheet(sample);
+  XLSX.utils.book_append_sheet(wb, ws, "Đơn hàng");
+  XLSX.writeFile(wb, "mau_don_hang.xlsx");
+}
+
+export function downloadMoldTemplate() {
+  const wb = XLSX.utils.book_new();
+  const sample = [
+    {
+      "Tên khuôn": "CPE-XL",
+      "Trạng thái": "Sẵn sàng",
+      "Ghi chú": "Khuôn size XL tiêu chuẩn",
+    },
+  ];
+  const ws = XLSX.utils.json_to_sheet(sample);
+  XLSX.utils.book_append_sheet(wb, ws, "Khuôn máy");
+  XLSX.writeFile(wb, "mau_khuon_may.xlsx");
+}
+
+export function parseAndDedupEmployees(fileBuffer, existingEmployees) {
+  const wb = XLSX.read(fileBuffer, { type: "array", cellDates: true });
+  const sheetName = wb.SheetNames.includes("Nhân sự") ? "Nhân sự" : wb.SheetNames[0];
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]);
+  const existingCodes = new Set(existingEmployees.map((e) => String(e.employeeCode || "").trim().toLowerCase()));
+  const newEmployees = [];
+  let skippedCount = 0;
+
+  rows.forEach((r, idx) => {
+    const code = String(r["Mã NV"] || r["employeeCode"] || "").trim();
+    const vnName = String(r["Tên VN"] || r["vietnameseName"] || "").trim();
+    if (!code || !vnName) return;
+
+    if (existingCodes.has(code.toLowerCase())) {
+      skippedCount++;
+      return;
+    }
+
+    existingCodes.add(code.toLowerCase());
+    newEmployees.push({
+      id: code,
+      employeeCode: code,
+      vietnameseName: vnName,
+      chineseName: String(r["Tên Trung"] || r["chineseName"] || "").trim(),
+      birthYear: Number(r["Năm sinh"] || r["birthYear"]) || 2000,
+      phone: String(r["SĐT"] || r["phone"] || "").trim(),
+      address: String(r["Địa chỉ"] || r["address"] || "").trim(),
+      joinDate: normalizeDateCell(r["Ngày vào làm"] || r["joinDate"]) || new Date().toISOString().slice(0, 10),
+      resignDate: r["Ngày rời đi"] ? normalizeDateCell(r["Ngày rời đi"]) : null,
+      resignReason: String(r["Lý do nghỉ"] || r["resignReason"] || "").trim(),
+      position: POSITION_LIST.includes(r["Vị trí"]) ? r["Vị trí"] : POSITION_LIST[0],
+      status: EMP_STATUS_DEFS.some((s) => s.vi === r["Trạng thái"]) ? r["Trạng thái"] : EMP_STATUS.OFFICIAL,
+      notes: String(r["Ghi chú"] || r["notes"] || "").trim(),
+    });
+  });
+
+  return { added: newEmployees, addedCount: newEmployees.length, skippedCount };
+}
+
+export function parseAndDedupOrders(fileBuffer, existingOrders, molds = []) {
+  const wb = XLSX.read(fileBuffer, { type: "array", cellDates: true });
+  const sheetName = wb.SheetNames.includes("Đơn hàng") ? "Đơn hàng" : wb.SheetNames[0];
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]);
+  const moldByName = {};
+  molds.forEach((m) => {
+    moldByName[m.moldName.trim().toLowerCase()] = m.id;
+  });
+
+  const existingCodes = new Set(existingOrders.map((o) => String(o.orderCode || "").trim().toLowerCase()));
+  const newOrders = [];
+  let skippedCount = 0;
+
+  rows.forEach((r, idx) => {
+    const code = String(r["Mã đơn hàng"] || r["orderCode"] || "").trim();
+    if (!code) return;
+
+    if (existingCodes.has(code.toLowerCase())) {
+      skippedCount++;
+      return;
+    }
+
+    existingCodes.add(code.toLowerCase());
+    const moldRaw = String(r["Khuôn"] || r["moldName"] || "").trim().toLowerCase();
+    const moldId = moldByName[moldRaw] || null;
+
+    newOrders.push({
+      id: code,
+      orderCode: code,
+      moldId,
+      size: String(r["Size"] || r["size"] || "").trim(),
+      filmRollName: String(r["Tên cuộn màng"] || r["Cuộn màng"] || r["filmRollName"] || "").trim(),
+      completed: String(r["Trạng thái"] || "").trim() === "Đã hoàn thiện",
+    });
+  });
+
+  return { added: newOrders, addedCount: newOrders.length, skippedCount };
+}
+
+export function parseAndDedupMolds(fileBuffer, existingMolds) {
+  const wb = XLSX.read(fileBuffer, { type: "array", cellDates: true });
+  const sheetName = wb.SheetNames.includes("Khuôn máy") ? "Khuôn máy" : wb.SheetNames[0];
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]);
+  const existingNames = new Set(existingMolds.map((m) => String(m.moldName || "").trim().toLowerCase()));
+  const newMolds = [];
+  let skippedCount = 0;
+
+  rows.forEach((r, idx) => {
+    const name = String(r["Tên khuôn"] || r["moldName"] || "").trim();
+    if (!name) return;
+
+    if (existingNames.has(name.toLowerCase())) {
+      skippedCount++;
+      return;
+    }
+
+    existingNames.add(name.toLowerCase());
+    const id = `MOLD-${Date.now()}-${idx}`;
+    newMolds.push({
+      id,
+      moldName: name,
+      status: MOLD_STATUS_DEFS.some((s) => s.vi === r["Trạng thái"]) ? r["Trạng thái"] : MOLD_STATUS.SẴN_SÀNG,
+      notes: String(r["Ghi chú"] || r["notes"] || "").trim(),
+    });
+  });
+
+  return { added: newMolds, addedCount: newMolds.length, skippedCount };
+}
+

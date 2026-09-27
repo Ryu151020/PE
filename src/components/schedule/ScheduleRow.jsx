@@ -1,7 +1,9 @@
+import { useMemo } from "react";
 import { EmployeeMultiSelect } from "./EmployeeChip";
 import { ShiftOvertimeBadge } from "./ShiftOvertimeBadge";
 import { StackedStatusBadge } from "../ui/Badges";
-import { MACHINE_STATUS_COLOR, MACHINE_STATUS_DEFS, MACHINE_STATUS_TEXT_COLOR } from "../../lib/constants";
+import { SearchableSelect } from "../ui/SearchableSelect";
+import { MACHINE_STATUS_COLOR, MACHINE_STATUS_DEFS, MACHINE_STATUS_TEXT_COLOR, getMoldColor } from "../../lib/constants";
 import { inputCls } from "../../lib/styles";
 import { entryMachineStatus } from "../../lib/schedule";
 
@@ -21,38 +23,85 @@ export function ScheduleRow({ machine, entry, molds, orders, ordersById, editabl
   const updNight = (patch) => onPatchEntry({ nightShift: { ...entry.nightShift, ...patch } });
   const machineStatus = entryMachineStatus(entry, machine);
   const st = MACHINE_STATUS_DEFS[machineStatus];
+
   const handleOrderChange = (orderId) => {
     const order = orderId ? ordersById[orderId] : null;
     // Only the film roll follows the order — the mold stays whatever was picked for this machine (any mold can run any order).
-    onPatchEntry({ orderId: orderId || null, filmRollName: order ? order.filmRollName : entry.filmRollName });
+    onPatchEntry({
+      orderId: orderId || null,
+      filmRollName: order ? (order.filmRollName || "") : "",
+    });
   };
+
   const currentOrder = entry.orderId ? ordersById[entry.orderId] : null;
   const orderLabel = (o) => `${o.orderCode}${o.size ? ` (Size ${o.size})` : ""}`;
+
+  const currentMold = molds.find((m) => m.id === entry.moldId);
+  const currentMoldColor = currentMold ? getMoldColor(currentMold.moldName) : null;
+
+  const moldOptions = useMemo(
+    () => molds.map((m) => ({ value: m.id, label: m.moldName })),
+    [molds]
+  );
+
+  const orderOptions = useMemo(
+    () =>
+      orders
+        .filter((o) => !o.completed || o.id === entry.orderId)
+        .map((o) => ({
+          value: o.id,
+          label: orderLabel(o),
+          disabled: o.completed,
+          sub: o.completed ? "đã xong" : "",
+        })),
+    [orders, entry.orderId]
+  );
+
+  const effectiveFilmRoll = currentOrder ? (currentOrder.filmRollName || "") : (entry.filmRollName || "");
+
   return (
     <tr className="hover:bg-canvas text-sm">
       <td className="z-10 bg-white border-r border-b border-line px-2 py-1.5 text-center text-mute font-bold" style={{ position: "sticky", left: L0, width: W0, minWidth: W0, maxWidth: W0 }}>{machine.machineNumber}</td>
       <td className={`z-10 bg-white border-r border-b border-line px-2 py-1.5 `} style={{ position: "sticky", left: L1, width: W1, minWidth: W1, maxWidth: W1, ...selStickyStyle("machineStatus") }} onMouseDown={(e) => onCellMouseDown(e, "machineStatus", machine.id)} onMouseEnter={() => onCellEnter("machineStatus", machine.id)} onClick={(e) => onSelectCell("machineStatus", machine.id, e.shiftKey)}>
         {editable ? (
-          <select className="rad-6 border font-bold text-xs py-1 px-1 w-full" style={{ borderColor: MACHINE_STATUS_TEXT_COLOR[machineStatus], color: MACHINE_STATUS_TEXT_COLOR[machineStatus] }} value={machineStatus} onChange={(e) => onPatchEntry({ machineStatus: e.target.value })}>
+          <select className="rounded-xs border font-bold text-xs py-1 px-1 w-full" style={{ borderColor: MACHINE_STATUS_TEXT_COLOR[machineStatus], color: MACHINE_STATUS_TEXT_COLOR[machineStatus] }} value={machineStatus} onChange={(e) => onPatchEntry({ machineStatus: e.target.value })}>
             {Object.entries(MACHINE_STATUS_DEFS).map(([k, v]) => <option key={k} value={k}>{v.vi}</option>)}
           </select>
         ) : (<StackedStatusBadge vi={st.vi} zh={st.zh} className={MACHINE_STATUS_COLOR[machineStatus]} />)}
       </td>
       <td className={`z-10 bg-white border-r border-b border-line px-2 py-1.5 `} style={{ position: "sticky", left: L2, width: W2, minWidth: W2, maxWidth: W2, ...selStickyStyle("mold", "8px 0 8px -8px rgba(112,144,176,0.28)") }} onMouseDown={(e) => onCellMouseDown(e, "mold", machine.id)} onMouseEnter={() => onCellEnter("mold", machine.id)} onClick={(e) => onSelectCell("mold", machine.id, e.shiftKey)}>
-        {editable ? (<select className={`${inputCls} v-input--sm`} value={entry.moldId || ""} onChange={(e) => onPatchEntry({ moldId: e.target.value || null })}><option value="">— Chưa gán / 未指定 —</option>{molds.map((m) => <option key={m.id} value={m.id}>{m.moldName}</option>)}</select>) : (<span className="text-xs font-medium text-ink">{molds.find((m) => m.id === entry.moldId)?.moldName || "—"}</span>)}
+        {editable ? (
+          <SearchableSelect
+            value={entry.moldId || null}
+            onChange={(val) => onPatchEntry({ moldId: val })}
+            options={moldOptions}
+            isMold={true}
+            placeholder="—"
+            searchPlaceholder="Tìm khuôn... / 搜索..."
+          />
+        ) : currentMold ? (
+          <span className={`px-2 py-0.5 rounded-xs border text-xs font-semibold ${currentMoldColor.bg} ${currentMoldColor.text} ${currentMoldColor.border}`}>
+            {currentMold.moldName}
+          </span>
+        ) : (
+          <span className="text-sm font-medium text-mute">—</span>
+        )}
       </td>
       <td className={cellCls("order")} onMouseDown={(e) => onCellMouseDown(e, "order", machine.id)} onMouseEnter={() => onCellEnter("order", machine.id)} onClick={(e) => onSelectCell("order", machine.id, e.shiftKey)} style={selStyle("order")}>
         {editable ? (
-          <select className={`${inputCls} v-input--sm`} value={entry.orderId || ""} onChange={(e) => handleOrderChange(e.target.value)}>
-            <option value="">— Chưa gán / 未指定 —</option>
-            {orders.filter((o) => !o.completed || o.id === entry.orderId).map((o) => (
-              <option key={o.id} value={o.id} disabled={o.completed}>{orderLabel(o)}{o.completed ? " — đã hoàn thiện (khóa)" : ""}</option>
-            ))}
-          </select>
-        ) : (<span className="text-xs text-body">{currentOrder ? orderLabel(currentOrder) : "—"}</span>)}
+          <SearchableSelect
+            value={entry.orderId || null}
+            onChange={handleOrderChange}
+            options={orderOptions}
+            placeholder="—"
+            searchPlaceholder="Tìm đơn... / 搜索..."
+          />
+        ) : (
+          <span className="text-sm text-body">{currentOrder ? orderLabel(currentOrder) : "—"}</span>
+        )}
       </td>
-      <td className={cellCls("filmRoll")} onMouseDown={(e) => onCellMouseDown(e, "filmRoll", machine.id)} onMouseEnter={() => onCellEnter("filmRoll", machine.id)} onClick={(e) => onSelectCell("filmRoll", machine.id, e.shiftKey)} style={selStyle("filmRoll")}>
-        {editable ? (<input className={`${inputCls} v-input--sm`} value={entry.filmRollName || ""} onChange={(e) => onPatchEntry({ filmRollName: e.target.value })} />) : (<span className="text-xs text-body">{entry.filmRollName || "—"}</span>)}
+      <td className="border-r border-b border-line px-2 py-1.5 align-middle bg-gray-50/50">
+        <span className="text-sm font-medium text-ink px-1">{effectiveFilmRoll || "—"}</span>
       </td>
       {dayCollapsed ? (
         <td className="border-r border-b border-line bg-day-soft" style={{ width: 26 }} />

@@ -106,6 +106,8 @@ export function EmployeeMultiSelect({ candidates, selectedIds, editable, onChang
   const [addOpen, setAddOpen] = useState(false);
   const [expandOpen, setExpandOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const addContainerRef = useRef(null);
+  const expandContainerRef = useRef(null);
   const VISIBLE = 3;
   const selectedEmployees = selectedIds.map((id) => candidates.find((c) => c.id === id)).filter(Boolean);
   const visible = selectedEmployees.slice(0, VISIBLE);
@@ -119,6 +121,20 @@ export function EmployeeMultiSelect({ candidates, selectedIds, editable, onChang
   const remove = (id) => onChange(selectedIds.filter((x) => x !== id));
   const closeAllPopovers = () => { setAddOpen(false); setExpandOpen(false); };
 
+  useEffect(() => {
+    if (!addOpen && !expandOpen) return;
+    const handleOutside = (e) => {
+      if (addOpen && addContainerRef.current && !addContainerRef.current.contains(e.target)) {
+        setAddOpen(false);
+      }
+      if (expandOpen && expandContainerRef.current && !expandContainerRef.current.contains(e.target)) {
+        setExpandOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [addOpen, expandOpen]);
+
   const handleDragOver = (e) => { if (editable && isDropTarget) e.preventDefault(); };
   const handleDrop = (e) => {
     if (!editable || !onDropEmployee) return;
@@ -127,17 +143,17 @@ export function EmployeeMultiSelect({ candidates, selectedIds, editable, onChang
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 rad-6" style={{ minHeight: 26 }} onDragOver={handleDragOver} onDrop={handleDrop} onDragStartCapture={closeAllPopovers}>
+    <div className="flex flex-wrap items-center gap-1.5 min-h-[26px] rounded-xs" onDragOver={handleDragOver} onDrop={handleDrop} onDragStartCapture={closeAllPopovers}>
       {visible.map((emp) => (
         <EmployeeChip key={emp.id} employee={emp} editable={editable} onRemove={() => remove(emp.id)}
           draggable={editable && !!dragContext}
           onDragStart={(e) => { closeAllPopovers(); if (dragContext) e.dataTransfer.setData("application/json", JSON.stringify({ employeeId: emp.id, sourceMachineId: dragContext.machineId, sourceColKey: dragContext.colKey })); }} />
       ))}
       {overflow.length > 0 && (
-        <span className="relative">
-          <button className="rounded-full bg-line px-1.5 py-0.5 text-xs font-semibold text-body hover:bg-line-deep" onClick={() => setExpandOpen((v) => !v)}>+{overflow.length}</button>
+        <span ref={expandContainerRef} className="relative">
+          <button className="rounded-xs bg-line px-1.5 py-0.5 text-xs font-semibold text-body hover:bg-line-deep" onClick={() => setExpandOpen((v) => !v)}>+{overflow.length}</button>
           {expandOpen && (
-            <div className="absolute left-0 top-full z-40 mt-1 rad-14 border border-line bg-white p-2 sh-soft" style={{ width: 260 }}>
+            <div className="absolute left-0 top-full z-40 mt-1 w-[260px] rounded-xs border border-line bg-white p-2 shadow-md">
               <div className="mb-1 text-xs font-medium text-mute">Xem tất cả / 查看全部 ({selectedEmployees.length})</div>
               <div className="flex flex-wrap gap-1">
                 {selectedEmployees.map((emp) => (
@@ -150,18 +166,18 @@ export function EmployeeMultiSelect({ candidates, selectedIds, editable, onChang
         </span>
       )}
       {editable && (
-        <span className="relative">
-          <button className="flex items-center justify-center rounded-full border border-dashed border-line2 text-mute hover:border-brand hover:text-brand" style={{ height: 22, width: 22 }} onClick={() => setAddOpen((v) => !v)}><Plus size={13} /></button>
+        <span ref={addContainerRef} className="relative">
+          <button className="flex h-[22px] w-[22px] items-center justify-center rounded-xs border border-dashed border-line2 text-mute hover:border-brand hover:text-brand" onClick={() => setAddOpen((v) => !v)}><Plus size={13} /></button>
           {addOpen && (
-            <div className="absolute left-0 top-full z-40 mt-1 rad-14 border border-line bg-white p-2 sh-soft" style={{ width: 250 }}>
-              <input autoFocus className={`${inputCls} mb-1.5`} placeholder="Tìm công nhân... / 搜索工人..." value={query} onChange={(e) => setQuery(e.target.value)} />
-              <div className="overflow-y-auto" style={{ maxHeight: 170 }}>
-                {results.length === 0 && <div className="px-1 py-2 text-xs text-mute">Không có kết quả / 无结果</div>}
+            <div className="absolute left-0 top-full z-40 mt-1 w-[250px] rounded-xs border border-line bg-white p-2 shadow-md">
+              <input autoFocus className={`${inputCls} mb-1.5 text-sm`} placeholder="Tìm công nhân... / 搜索工人..." value={query} onChange={(e) => setQuery(e.target.value)} />
+              <div className="max-h-[170px] overflow-y-auto">
+                {results.length === 0 && <div className="px-1 py-2 text-sm text-mute">Không có kết quả / 无结果</div>}
                 {results.map((emp) => (
-                  <button key={emp.id} className="flex w-full items-center justify-between rad-6 px-1.5 py-1 text-left text-xs hover:bg-canvas" onClick={() => add(emp.id)}>
+                  <button key={emp.id} className="flex w-full items-center justify-between px-1.5 py-1 text-left text-sm rounded-xs hover:bg-canvas" onClick={() => add(emp.id)}>
                     <span className="truncate">{emp.vietnameseName}</span>
                     <span className="flex items-center gap-1 shrink-0">
-                      {EMP_STATUS_TAG[emp.status] && <span className={`rad-6 ${EMP_STATUS_TAG[emp.status].color} px-1 text-xs font-bold text-white`}>{EMP_STATUS_TAG[emp.status].char}</span>}
+                      {EMP_STATUS_TAG[emp.status] && <span className={`rounded-xs ${EMP_STATUS_TAG[emp.status].color} px-1 text-xs font-bold text-white`}>{EMP_STATUS_TAG[emp.status].char}</span>}
                       <span className="text-xs text-mute">{emp.employeeCode}</span>
                     </span>
                   </button>

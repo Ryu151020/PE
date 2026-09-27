@@ -6,7 +6,7 @@ import { useAuth } from "./AuthContext";
 const FEATURES = [
   { icon: CalendarClock, vi: "Sắp ca 41 máy × 2 ca", zh: "41台机器 × 2班次排班" },
   { icon: BarChart3, vi: "Báo cáo & tỉ lệ mở máy", zh: "报表与开机率" },
-  { icon: Cloud, vi: "Đồng bộ Google Sheets", zh: "Google Sheets 实时同步" },
+  { icon: Cloud, vi: "Lưu trữ dữ liệu an toàn", zh: "安全数据存储" },
 ];
 
 /* Landing + login (Venus): gradient hero on the left, white login card on the right. */

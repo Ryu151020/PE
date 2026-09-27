@@ -99,7 +99,9 @@ export function ScheduleTable({ machines, molds, orders, ordersById, entries, ed
       for (let c = 0; c < outC; c++) {
         const colKey = visibleCols[startCol + c];
         if (!machine || !colKey) { clipped++; continue; }
+        if (colKey === "filmRoll") continue;
         const srcCol = clip.colKeys[c % cC];
+        if (srcCol === "filmRoll") continue;
         if (colType(srcCol) !== colType(colKey)) { mismatch++; continue; }
         assignments.push({ machineId: machine.id, colKey, value: clip.rows[r % cR][c % cC] });
       }
@@ -114,7 +116,7 @@ export function ScheduleTable({ machines, molds, orders, ordersById, entries, ed
     const allSkipped = [];
     assignments.forEach(({ machineId, colKey, value }) => {
       if (colKey === "machineStatus") { if (MACHINE_STATUS_DEFS[value]) newEntries[machineId] = { ...newEntries[machineId], machineStatus: value }; return; }   // status is per-day, part of the draft
-      const { entry, skipped } = applyCellValue(newEntries[machineId], colKey, value, dateKey, employeesById, claimed);
+      const { entry, skipped } = applyCellValue(newEntries[machineId], colKey, value, dateKey, employeesById, claimed, ordersById);
       newEntries[machineId] = entry;
       skipped.forEach((s) => allSkipped.push({ ...s, machineId }));
     });
@@ -125,7 +127,7 @@ export function ScheduleTable({ machines, molds, orders, ordersById, entries, ed
     const notes = allSkipped.length + mismatch + clipped;
     if (notes > 0) pushToast(`Đã dán ${assignments.length} ô, bỏ qua ${notes} ô không hợp lệ / 已粘贴 ${assignments.length} 格，跳过 ${notes} 格`, "warning");
     else pushToast(`Đã dán ${assignments.length} ô / 已粘贴 ${assignments.length} 格`, "success");
-  }, [editable, selection, entries, machines, machineIndex, visibleCols, dateKey, employeesById, onBulkUpdate, pushToast, buildSelection]);
+  }, [editable, selection, entries, machines, machineIndex, visibleCols, dateKey, employeesById, ordersById, onBulkUpdate, pushToast, buildSelection]);
 
   const handleDropEmployee = useCallback((targetMachineId, colKey, payload) => {
     if (!editable) return;
@@ -147,17 +149,17 @@ export function ScheduleTable({ machines, molds, orders, ordersById, entries, ed
 
   const handleDeleteSelection = useCallback(() => {
     if (!editable || !selection) return;
-    const cols = selection.colKeys.filter((k) => k !== "machineStatus");
+    const cols = selection.colKeys.filter((k) => k !== "machineStatus" && k !== "filmRoll");
     if (cols.length === 0) return;
     const newEntries = { ...entries };
     const claimed = { dayWorkers: new Set(), nightWorkers: new Set() };
     selection.machineIds.forEach((machineId) => {
-      cols.forEach((colKey) => { const { entry } = applyCellValue(newEntries[machineId], colKey, "", dateKey, employeesById, claimed); newEntries[machineId] = entry; });
+      cols.forEach((colKey) => { const { entry } = applyCellValue(newEntries[machineId], colKey, "", dateKey, employeesById, claimed, ordersById); newEntries[machineId] = entry; });
     });
     onBulkUpdate(newEntries);
     const total = selection.machineIds.length * cols.length;
     pushToast(`Đã xóa dữ liệu ${total} ô / 已清空 ${total} 格`, "info");
-  }, [editable, selection, entries, dateKey, employeesById, onBulkUpdate, pushToast]);
+  }, [editable, selection, entries, dateKey, employeesById, ordersById, onBulkUpdate, pushToast]);
 
   useEffect(() => {
     const onKey = (e) => {

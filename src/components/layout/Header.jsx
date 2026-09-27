@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { LogOut, Search } from "lucide-react";
-import { SyncStatus } from "../sync/SyncStatus";
 import { useApp } from "../../context/AppContext";
 import { NAV_ITEMS } from "../../lib/nav";
 import { btnSecondary } from "../../lib/styles";
@@ -32,15 +31,15 @@ export function Header({ page, setPage }) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
   return (
-    <header className="relative z-30 flex flex-wrap items-end justify-between gap-x-6 gap-y-4" style={{ padding: "30px 30px 24px" }}>
+    <header className="relative z-30 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 pt-[30px] px-[30px] pb-6">
       <div className="flex w-full items-center gap-1.5 md:hidden">
-        {NAV_ITEMS.map(({ key, icon: Icon }) => (<button key={key} onClick={() => setPage(key)} className={`rounded-full p-2 ${page === key ? "bg-brand text-white" : "bg-white text-mute"}`}><Icon size={16} /></button>))}
+        {NAV_ITEMS.map(({ key, icon: Icon }) => (<button key={key} onClick={() => setPage(key)} className={`rounded-xs p-2 ${page === key ? "bg-brand text-white" : "bg-white text-mute"}`}><Icon size={16} /></button>))}
       </div>
       <div className="min-w-0">
-        <div className="text-sm font-bold" style={{ color: "#707EAE" }}>
+        <div className="text-sm font-bold text-[#707EAE]">
           Xin chào / 你好, {(user && (user.name || user.username)) || user || role}
         </div>
-        <h1 style={{ fontSize: 34, lineHeight: "42px", fontWeight: 700, color: "#2B3674" }}>
+        <h1 className="text-[34px] leading-[42px] font-bold text-[#2B3674]">
           {nav.vi}<span className="ml-3 text-base font-medium text-mute">{nav.zh}</span>
         </h1>
       </div>
@@ -52,13 +51,12 @@ export function Header({ page, setPage }) {
             <span className="v-kbd">/</span>
           </label>
           {open && results.length > 0 && (
-            <div className="v-menu v-menu--left" style={{ width: "100%", minWidth: 280 }}>
-              {results.map((r, i) => (<button key={i} className="v-menu-item" onMouseDown={() => { setPage(r.page); setQuery(""); setOpen(false); }}><span className="font-bold text-ink">{r.label}</span><span className="text-xs">{r.type}</span></button>))}
+            <div className="v-menu v-menu--left w-full min-w-[280px]">
+              {results.map((r, i) => (<button key={i} className="v-menu-item" onMouseDown={() => { setPage(r.page); setQuery(""); setOpen(false); }}><span className="font-bold text-ink">{r.label}</span><span className="text-sm">{r.type}</span></button>))}
             </div>
           )}
         </div>
-        <SyncStatus />
-        <div className="flex items-center gap-1.5 rounded-full border border-line bg-white px-3.5 text-xs shadow-sm" style={{ height: 44 }}>
+        <div className="flex h-11 items-center gap-1.5 rounded-xs border border-line bg-white px-3.5 text-sm shadow-sm">
           <span className="text-mute font-normal">Vai trò / 角色:</span>
           <span className="text-brand font-bold">{role}</span>
         </div>

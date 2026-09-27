@@ -111,3 +111,33 @@ export const PIE_COLORS = ["#4318FF", "#6AD2FF", "#05CD99", "#FFB547", "#EE5D50"
 export const TENURE_ZH = { "< 1 tháng": "< 1 个月", "1-3 tháng": "1-3 个月", "3-6 tháng": "3-6 个月", "6-12 tháng": "6-12 个月", "1-2 năm": "1-2 年", "> 2 năm": "> 2 年" };
 
 export function reasonZh(r) { const f = RESIGN_REASONS.find((x) => x.vi === r); return f ? f.zh : r === "Chưa ghi nhận" ? "未记录" : ""; }
+
+export const MOLD_COLOR_PALETTE = [
+  { bg: "bg-blue-100", text: "text-blue-800", border: "border-blue-300" },
+  { bg: "bg-emerald-100", text: "text-emerald-800", border: "border-emerald-300" },
+  { bg: "bg-purple-100", text: "text-purple-800", border: "border-purple-300" },
+  { bg: "bg-amber-100", text: "text-amber-800", border: "border-amber-300" },
+  { bg: "bg-rose-100", text: "text-rose-800", border: "border-rose-300" },
+  { bg: "bg-cyan-100", text: "text-cyan-800", border: "border-cyan-300" },
+  { bg: "bg-indigo-100", text: "text-indigo-800", border: "border-indigo-300" },
+  { bg: "bg-fuchsia-100", text: "text-fuchsia-800", border: "border-fuchsia-300" },
+  { bg: "bg-teal-100", text: "text-teal-800", border: "border-teal-300" },
+  { bg: "bg-orange-100", text: "text-orange-800", border: "border-orange-300" },
+  { bg: "bg-violet-100", text: "text-violet-800", border: "border-violet-300" },
+  { bg: "bg-lime-100", text: "text-lime-800", border: "border-lime-300" },
+  { bg: "bg-pink-100", text: "text-pink-800", border: "border-pink-300" },
+  { bg: "bg-sky-100", text: "text-sky-800", border: "border-sky-300" },
+  { bg: "bg-yellow-100", text: "text-yellow-800", border: "border-yellow-300" },
+  { bg: "bg-red-100", text: "text-red-800", border: "border-red-300" },
+];
+
+export function getMoldColor(moldName) {
+  if (!moldName) return { bg: "bg-canvas", text: "text-mute", border: "border-line" };
+  let hash = 0;
+  for (let i = 0; i < moldName.length; i++) {
+    hash = (hash << 5) - hash + moldName.charCodeAt(i);
+    hash |= 0;
+  }
+  const idx = Math.abs(hash) % MOLD_COLOR_PALETTE.length;
+  return MOLD_COLOR_PALETTE[idx];
+}

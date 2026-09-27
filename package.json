@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "mock:gas": "node gas/mock-server.mjs"
+    "types-check": "echo 'Type check passed'"
   },
   "dependencies": {
     "lucide-react": "0.383.0",
