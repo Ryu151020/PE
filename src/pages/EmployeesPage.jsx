@@ -329,39 +329,6 @@ export function EmployeesPage() {
                   className="min-w-[130px]"
                 />
                 <SortableTh
-                  labelVi="Năm sinh"
-                  labelZh="出生年"
-                  colKey="birthYear"
-                  sortConfig={sortConfig}
-                  onSort={handleSort}
-                  filterValue={filters.birthYear}
-                  onFilterChange={handleFilterChange}
-                  data={tabEmployees}
-                  className="min-w-[110px]"
-                />
-                <SortableTh
-                  labelVi="Số điện thoại"
-                  labelZh="电话"
-                  colKey="phone"
-                  sortConfig={sortConfig}
-                  onSort={handleSort}
-                  filterValue={filters.phone}
-                  onFilterChange={handleFilterChange}
-                  data={tabEmployees}
-                  className="min-w-[130px]"
-                />
-                <SortableTh
-                  labelVi="Địa chỉ"
-                  labelZh="地址"
-                  colKey="address"
-                  sortConfig={sortConfig}
-                  onSort={handleSort}
-                  filterValue={filters.address}
-                  onFilterChange={handleFilterChange}
-                  data={tabEmployees}
-                  className="min-w-[170px]"
-                />
-                <SortableTh
                   labelVi="Ngày vào làm"
                   labelZh="入职"
                   colKey="joinDate"
@@ -410,6 +377,39 @@ export function EmployeesPage() {
                   data={tabEmployees}
                   className="min-w-[120px]"
                 />
+                 <SortableTh
+                  labelVi="Năm sinh"
+                  labelZh="出生年"
+                  colKey="birthYear"
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                  filterValue={filters.birthYear}
+                  onFilterChange={handleFilterChange}
+                  data={tabEmployees}
+                  className="min-w-[110px]"
+                />
+                <SortableTh
+                  labelVi="Số điện thoại"
+                  labelZh="电话"
+                  colKey="phone"
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                  filterValue={filters.phone}
+                  onFilterChange={handleFilterChange}
+                  data={tabEmployees}
+                  className="min-w-[130px]"
+                />
+                <SortableTh
+                  labelVi="Địa chỉ"
+                  labelZh="地址"
+                  colKey="address"
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                  filterValue={filters.address}
+                  onFilterChange={handleFilterChange}
+                  data={tabEmployees}
+                  className="min-w-[170px]"
+                />
                 <th className="px-3 py-2 text-right align-middle font-semibold text-ink text-sm whitespace-nowrap min-w-[110px]">
                   Thao tác / 操作
                 </th>
@@ -443,30 +443,7 @@ export function EmployeesPage() {
                       onChange={(ev) => updateEmployee(e.id, { chineseName: ev.target.value })}
                     />
                   </td>
-                  <td className={`px-2 py-2 ${selCls(e.id, "birthYear")}`} onClick={() => setSelected({ rowId: e.id, colKey: "birthYear" })}>
-                    <input
-                      className={`${inputCls} v-input--sm text-sm`}
-                      placeholder="—"
-                      value={e.birthYear || ""}
-                      onChange={(ev) => updateEmployee(e.id, { birthYear: ev.target.value })}
-                    />
-                  </td>
-                  <td className={`px-2 py-2 ${selCls(e.id, "phone")}`} onClick={() => setSelected({ rowId: e.id, colKey: "phone" })}>
-                    <input
-                      className={`${inputCls} v-input--sm text-sm`}
-                      placeholder="—"
-                      value={e.phone || ""}
-                      onChange={(ev) => updateEmployee(e.id, { phone: ev.target.value })}
-                    />
-                  </td>
-                  <td className={`px-2 py-2 ${selCls(e.id, "address")}`} onClick={() => setSelected({ rowId: e.id, colKey: "address" })}>
-                    <input
-                      className={`${inputCls} v-input--sm text-sm`}
-                      placeholder="—"
-                      value={e.address || ""}
-                      onChange={(ev) => updateEmployee(e.id, { address: ev.target.value })}
-                    />
-                  </td>
+               
                   <td className={`px-2 py-2 ${selCls(e.id, "joinDate")}`} onClick={() => setSelected({ rowId: e.id, colKey: "joinDate" })}>
                     <input
                       type="date"
@@ -501,6 +478,7 @@ export function EmployeesPage() {
                       ))}
                     </select>
                   </td>
+                  
                   <td className={`px-2 py-2 ${selCls(e.id, "status")}`} onClick={() => setSelected({ rowId: e.id, colKey: "status" })}>
                     <select
                       className={`border border-transparent px-2 py-1 text-sm font-bold cursor-pointer rounded-xs ${EMP_STATUS_COLOR[e.status] || ""}`}
@@ -513,6 +491,30 @@ export function EmployeesPage() {
                         </option>
                       ))}
                     </select>
+                  </td>
+                     <td className={`px-2 py-2 ${selCls(e.id, "birthYear")}`} onClick={() => setSelected({ rowId: e.id, colKey: "birthYear" })}>
+                    <input
+                      className={`${inputCls} v-input--sm text-sm`}
+                      placeholder="—"
+                      value={e.birthYear || ""}
+                      onChange={(ev) => updateEmployee(e.id, { birthYear: ev.target.value })}
+                    />
+                  </td>
+                  <td className={`px-2 py-2 ${selCls(e.id, "phone")}`} onClick={() => setSelected({ rowId: e.id, colKey: "phone" })}>
+                    <input
+                      className={`${inputCls} v-input--sm text-sm`}
+                      placeholder="—"
+                      value={e.phone || ""}
+                      onChange={(ev) => updateEmployee(e.id, { phone: ev.target.value })}
+                    />
+                  </td>
+                  <td className={`px-2 py-2 ${selCls(e.id, "address")}`} onClick={() => setSelected({ rowId: e.id, colKey: "address" })}>
+                    <input
+                      className={`${inputCls} v-input--sm text-sm`}
+                      placeholder="—"
+                      value={e.address || ""}
+                      onChange={(ev) => updateEmployee(e.id, { address: ev.target.value })}
+                    />
                   </td>
                   <td className="px-2 py-2 text-right">
                     <div className="flex justify-end gap-1">
