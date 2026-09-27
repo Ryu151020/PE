@@ -1,9 +1,8 @@
 import { useCallback, useState } from "react";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext";
 import { AppCtx } from "./context/AppContext";
 import { ROLES } from "./lib/constants";
-import { createBlankDb } from "./lib/seed";
-import { APPLE_FONT } from "./lib/styles";
 import { Header } from "./components/layout/Header";
 import { Sidebar } from "./components/layout/Sidebar";
 import { ChipHoverPopover } from "./components/schedule/EmployeeChip";
@@ -17,16 +16,31 @@ import { ReportsPage } from "./pages/ReportsPage";
 import { SchedulePage } from "./pages/SchedulePage";
 import { useLocalDb } from "./sync/useLocalDb";
 
-/* Root (rendered only after login): the database lives in useSheetsSync (optimistic UI + Google Sheets),
-   this component adds role, toasts, confirm dialog and page switching. */
 export default function App() {
   const { user, logout } = useAuth();
   const userProfile = typeof user === "object" && user ? user : { username: user || "Admin", role: ROLES.ADMIN };
   const [role, setRole] = useState(() => userProfile.role || ROLES.ADMIN);
-  const [page, setPage] = useState("schedule");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [toasts, setToasts] = useState([]);
-  const [confirmState, setConfirmState] = useState(null); // { title, message, confirmLabel, danger, onConfirm }
+  const [confirmState, setConfirmState] = useState(null);
+
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Extract page key from pathname (e.g. /machines -> "machines", / -> "schedule")
+  const path = location.pathname.replace(/^\//, "");
+  const page = path === "" || path === "schedule" ? "schedule" : path;
+
+  const setPage = useCallback(
+    (newPage) => {
+      if (newPage === "schedule") {
+        navigate("/");
+      } else {
+        navigate(`/${newPage}`);
+      }
+    },
+    [navigate]
+  );
 
   const pushToast = useCallback((message, type = "success") => {
     const id = Math.random().toString(36).slice(2);
@@ -35,22 +49,13 @@ export default function App() {
   }, []);
   const dismissToast = (id) => setToasts((t) => t.filter((x) => x.id !== id));
 
-  const username = userProfile.username || String(user || "");
   const { db, setDb, sync } = useLocalDb();
 
-  // In-app confirmation dialog — used instead of window.confirm(), which sandboxed/embedded environments may block.
   const confirmAction = useCallback((message, onConfirm, opts) => {
     setConfirmState({ message, onConfirm, title: opts?.title, confirmLabel: opts?.confirmLabel, danger: opts?.danger });
   }, []);
 
   const ctx = { db, setDb, role, setRole, toasts, pushToast, dismissToast, confirmAction, sync, user, logout };
-
-  let Page = SchedulePage;
-  if (page === "machines") Page = MachinesPage;
-  else if (page === "orders") Page = OrdersPage;
-  else if (page === "employees") Page = EmployeesPage;
-  else if (page === "reports") Page = ReportsPage;
-  else if (page === "data") Page = DataPage;
 
   return (
     <AppCtx.Provider value={ctx}>
@@ -60,7 +65,18 @@ export default function App() {
           <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
             <Header page={page} setPage={setPage} />
             <main className="flex-1 overflow-y-auto px-7 pb-7">
-              <div key={page} className="v-page"><Page /></div>
+              <div key={page} className="v-page">
+                <Routes>
+                  <Route path="/" element={<SchedulePage />} />
+                  <Route path="/schedule" element={<Navigate to="/" replace />} />
+                  <Route path="/machines" element={<MachinesPage />} />
+                  <Route path="/orders" element={<OrdersPage />} />
+                  <Route path="/employees" element={<EmployeesPage />} />
+                  <Route path="/reports" element={<ReportsPage />} />
+                  <Route path="/data" element={<DataPage />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </div>
             </main>
           </div>
         </div>

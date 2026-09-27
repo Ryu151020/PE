@@ -34,8 +34,9 @@ export function OrdersPage() {
     setDb((p) => ({ ...p, orders: nextOrders }));
   });
 
-  const handleSort = (key) => {
+  const handleSort = (key, forcedDirection) => {
     setSortConfig((prev) => {
+      if (forcedDirection) return { key, direction: forcedDirection };
       if (prev.key !== key) return { key, direction: "asc" };
       if (prev.direction === "asc") return { key, direction: "desc" };
       return { key: null, direction: null };
@@ -141,8 +142,13 @@ export function OrdersPage() {
     pushToast(`Đã thêm mới ${newOrders.length} đơn hàng từ Excel / 已新增`, "success");
   };
 
+  const tabOrders = useMemo(
+    () => orders.filter((o) => (tab === "open" ? !o.completed : o.completed)),
+    [orders, tab]
+  );
+
   const filteredAndSortedList = useMemo(() => {
-    let result = orders.filter((o) => (tab === "open" ? !o.completed : o.completed));
+    let result = tabOrders;
 
     if (query.trim()) {
       const q = query.toLowerCase().trim();
@@ -154,40 +160,47 @@ export function OrdersPage() {
       );
     }
 
-    if (filters.orderCode) {
-      const val = filters.orderCode.toLowerCase();
-      result = result.filter((o) => o.orderCode.toLowerCase().includes(val));
-    }
-    if (filters.moldId) {
-      result = result.filter((o) => String(o.moldId || "") === String(filters.moldId));
-    }
-    if (filters.size) {
-      const val = filters.size.toLowerCase();
-      result = result.filter((o) => (o.size || "").toLowerCase().includes(val));
-    }
-    if (filters.filmRollName) {
-      const val = filters.filmRollName.toLowerCase();
-      result = result.filter((o) => (o.filmRollName || "").toLowerCase().includes(val));
-    }
+    Object.entries(filters).forEach(([colKey, filterVal]) => {
+      if (!filterVal) return;
+      if (Array.isArray(filterVal)) {
+        const allowed = new Set(filterVal);
+        result = result.filter((o) => {
+          let raw = colKey === "moldId" ? (moldsById[o.moldId] || o.moldId || "") : o[colKey];
+          raw = String(raw ?? "").trim();
+          const val = raw === "" ? "(Chỗ trống)" : raw;
+          return allowed.has(val);
+        });
+      } else if (typeof filterVal === "string" && filterVal.trim()) {
+        const val = filterVal.toLowerCase().trim();
+        result = result.filter((o) => {
+          const raw = colKey === "moldId" ? (moldsById[o.moldId] || o.moldId || "") : o[colKey];
+          return String(raw ?? "").toLowerCase().includes(val);
+        });
+      }
+    });
 
     if (sortConfig.key) {
       result = [...result].sort((a, b) => {
         let valA = a[sortConfig.key];
         let valB = b[sortConfig.key];
         if (sortConfig.key === "moldId") {
-          valA = moldsById[a.moldId] || "";
-          valB = moldsById[b.moldId] || "";
+          valA = moldsById[a.moldId] || a.moldId || "";
+          valB = moldsById[b.moldId] || b.moldId || "";
         }
-        valA = String(valA || "").toLowerCase();
-        valB = String(valB || "").toLowerCase();
-        if (valA < valB) return sortConfig.direction === "asc" ? -1 : 1;
-        if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
-        return 0;
+        if (valA === undefined || valA === null) valA = "";
+        if (valB === undefined || valB === null) valB = "";
+        const numA = Number(valA);
+        const numB = Number(valB);
+        if (!isNaN(numA) && !isNaN(numB) && String(valA).trim() !== "" && String(valB).trim() !== "") {
+          return sortConfig.direction === "asc" ? numA - numB : numB - numA;
+        }
+        const cmp = String(valA).localeCompare(String(valB), "vi", { numeric: true, sensitivity: "base" });
+        return sortConfig.direction === "asc" ? cmp : -cmp;
       });
     }
 
     return result;
-  }, [orders, tab, query, filters, sortConfig, moldsById]);
+  }, [tabOrders, query, filters, sortConfig, moldsById]);
 
   const moldFilterOptions = useMemo(
     () => db.molds.map((m) => ({ value: m.id, label: m.moldName })),
@@ -254,8 +267,8 @@ export function OrdersPage() {
               <col className="w-[10%]" />
             </colgroup>
             <thead className="pe-thead text-sm">
-              <tr>
-                <th className="px-3 py-2 text-left align-top font-semibold text-ink text-sm">
+              <tr className="h-10">
+                <th className="px-3 py-2 text-center align-middle font-semibold text-ink text-sm whitespace-nowrap">
                   STT
                 </th>
                 <SortableTh
@@ -266,6 +279,7 @@ export function OrdersPage() {
                   onSort={handleSort}
                   filterValue={filters.orderCode}
                   onFilterChange={handleFilterChange}
+                  data={tabOrders}
                 />
                 <SortableTh
                   labelVi="Khuôn"
@@ -273,10 +287,10 @@ export function OrdersPage() {
                   colKey="moldId"
                   sortConfig={sortConfig}
                   onSort={handleSort}
-                  filterType="select"
-                  filterOptions={moldFilterOptions}
                   filterValue={filters.moldId}
                   onFilterChange={handleFilterChange}
+                  data={tabOrders}
+                  getDisplayValue={(o) => moldsById[o.moldId] || o.moldId || ""}
                 />
                 <SortableTh
                   labelVi="Size"
@@ -286,6 +300,7 @@ export function OrdersPage() {
                   onSort={handleSort}
                   filterValue={filters.size}
                   onFilterChange={handleFilterChange}
+                  data={tabOrders}
                 />
                 <SortableTh
                   labelVi="Tên cuộn màng"
@@ -295,11 +310,12 @@ export function OrdersPage() {
                   onSort={handleSort}
                   filterValue={filters.filmRollName}
                   onFilterChange={handleFilterChange}
+                  data={tabOrders}
                 />
-                <th className="px-3 py-2 text-left align-top font-semibold text-ink text-sm">
+                <th className="px-3 py-2 text-left align-middle font-semibold text-ink text-sm whitespace-nowrap">
                   Trạng thái / 状态
                 </th>
-                <th className="px-3 py-2 text-right align-top font-semibold text-ink text-sm">
+                <th className="px-3 py-2 text-right align-middle font-semibold text-ink text-sm whitespace-nowrap">
                   Thao tác / 操作
                 </th>
               </tr>

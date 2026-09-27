@@ -10,6 +10,7 @@ import { MOLD_STATUS_COLOR, MOLD_STATUS_DEFS } from "../lib/constants";
 import { downloadMoldTemplate, parseAndDedupMolds } from "../lib/excel";
 import { btnIcon, btnSecondary, card, inputCls } from "../lib/styles";
 import { useTableHistory } from "../lib/useTableHistory";
+import { SortableTh } from "../components/ui/SortableTh";
 
 export function MachinesPage() {
   const { db, setDb, pushToast, confirmAction } = useApp();
@@ -30,10 +31,58 @@ export function MachinesPage() {
     setDb((p) => ({ ...p, molds: nextMolds }));
   });
 
-  const filteredMolds = useMemo(
-    () => molds.filter((m) => !query || m.moldName.toLowerCase().includes(query.toLowerCase())),
-    [molds, query]
-  );
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
+  const [filters, setFilters] = useState({});
+
+  const handleSort = (key, forcedDirection) => {
+    setSortConfig((prev) => {
+      if (forcedDirection) return { key, direction: forcedDirection };
+      if (prev.key !== key) return { key, direction: "asc" };
+      if (prev.direction === "asc") return { key, direction: "desc" };
+      return { key: null, direction: null };
+    });
+  };
+
+  const handleFilterChange = (key, val) => {
+    setFilters((prev) => ({ ...prev, [key]: val }));
+  };
+
+  const filteredMolds = useMemo(() => {
+    let result = molds.filter((m) => !query || m.moldName.toLowerCase().includes(query.toLowerCase()));
+
+    Object.entries(filters).forEach(([colKey, filterVal]) => {
+      if (!filterVal) return;
+      if (Array.isArray(filterVal)) {
+        const allowed = new Set(filterVal);
+        result = result.filter((m) => {
+          const raw = String(m[colKey] ?? "").trim();
+          const val = raw === "" ? "(Chỗ trống)" : raw;
+          return allowed.has(val);
+        });
+      } else if (typeof filterVal === "string" && filterVal.trim()) {
+        const val = filterVal.toLowerCase().trim();
+        result = result.filter((m) => String(m[colKey] ?? "").toLowerCase().includes(val));
+      }
+    });
+
+    if (sortConfig.key) {
+      result = [...result].sort((a, b) => {
+        let valA = a[sortConfig.key];
+        let valB = b[sortConfig.key];
+        if (valA === undefined || valA === null) valA = "";
+        if (valB === undefined || valB === null) valB = "";
+        const numA = Number(valA);
+        const numB = Number(valB);
+        if (!isNaN(numA) && !isNaN(numB) && String(valA).trim() !== "" && String(valB).trim() !== "") {
+          return sortConfig.direction === "asc" ? numA - numB : numB - numA;
+        }
+        const cmp = String(valA).localeCompare(String(valB), "vi", { numeric: true, sensitivity: "base" });
+        return sortConfig.direction === "asc" ? cmp : -cmp;
+      });
+    }
+
+    return result;
+  }, [molds, query, filters, sortConfig]);
 
   const saveMold = (form) => {
     if (moldForm && moldForm.id) {
@@ -163,12 +212,43 @@ export function MachinesPage() {
               <col className="w-[16%]" />
             </colgroup>
             <thead className="pe-thead text-sm">
-              <tr>
-                <th className="px-3 py-2 text-left font-semibold text-ink">STT / 序号</th>
-                <th className="px-3 py-2 text-left font-semibold text-ink">Tên khuôn / 模具名称</th>
-                <th className="px-3 py-2 text-left font-semibold text-ink">Trạng thái / 状态</th>
-                <th className="px-3 py-2 text-left font-semibold text-ink">Ghi chú / 备注</th>
-                <th className="px-3 py-2 text-right font-semibold text-ink">Thao tác / 操作</th>
+              <tr className="h-10">
+                <th className="px-3 py-2 text-center align-middle font-semibold text-ink text-sm whitespace-nowrap">
+                  STT / 序号
+                </th>
+                <SortableTh
+                  labelVi="Tên khuôn"
+                  labelZh="模具名称"
+                  colKey="moldName"
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                  filterValue={filters.moldName}
+                  onFilterChange={handleFilterChange}
+                  data={molds}
+                />
+                <SortableTh
+                  labelVi="Trạng thái"
+                  labelZh="状态"
+                  colKey="status"
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                  filterValue={filters.status}
+                  onFilterChange={handleFilterChange}
+                  data={molds}
+                />
+                <SortableTh
+                  labelVi="Ghi chú"
+                  labelZh="备注"
+                  colKey="notes"
+                  sortConfig={sortConfig}
+                  onSort={handleSort}
+                  filterValue={filters.notes}
+                  onFilterChange={handleFilterChange}
+                  data={molds}
+                />
+                <th className="px-3 py-2 text-right align-middle font-semibold text-ink text-sm whitespace-nowrap">
+                  Thao tác / 操作
+                </th>
               </tr>
             </thead>
             <tbody>

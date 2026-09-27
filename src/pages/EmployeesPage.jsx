@@ -49,8 +49,9 @@ export function EmployeesPage() {
     setDb((p) => ({ ...p, employees: nextEmployees }));
   });
 
-  const handleSort = (key) => {
+  const handleSort = (key, forcedDirection) => {
     setSortConfig((prev) => {
+      if (forcedDirection) return { key, direction: forcedDirection };
       if (prev.key !== key) return { key, direction: "asc" };
       if (prev.direction === "asc") return { key, direction: "desc" };
       return { key: null, direction: null };
@@ -177,8 +178,13 @@ export function EmployeesPage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [selected, employees]);
 
+  const tabEmployees = useMemo(
+    () => employees.filter((e) => (tab === "active" ? isActive(e) : !isActive(e))),
+    [employees, tab]
+  );
+
   const filteredAndSortedList = useMemo(() => {
-    let list = employees.filter((e) => (tab === "active" ? isActive(e) : !isActive(e)));
+    let list = tabEmployees;
 
     if (query.trim()) {
       const q = query.toLowerCase().trim();
@@ -198,64 +204,41 @@ export function EmployeesPage() {
       list = list.filter((e) => e.resignDate && inRange(e.resignDate, resignRange.from, resignRange.to));
     }
 
-    if (filters.employeeCode) {
-      const val = filters.employeeCode.toLowerCase();
-      list = list.filter((e) => e.employeeCode.toLowerCase().includes(val));
-    }
-    if (filters.vietnameseName) {
-      const val = filters.vietnameseName.toLowerCase();
-      list = list.filter((e) => e.vietnameseName.toLowerCase().includes(val));
-    }
-    if (filters.chineseName) {
-      const val = filters.chineseName.toLowerCase();
-      list = list.filter((e) => (e.chineseName || "").toLowerCase().includes(val));
-    }
-    if (filters.birthYear) {
-      const val = String(filters.birthYear).trim();
-      list = list.filter((e) => String(e.birthYear || "").includes(val));
-    }
-    if (filters.phone) {
-      const val = filters.phone.toLowerCase();
-      list = list.filter((e) => (e.phone || "").toLowerCase().includes(val));
-    }
-    if (filters.address) {
-      const val = filters.address.toLowerCase();
-      list = list.filter((e) => (e.address || "").toLowerCase().includes(val));
-    }
-    if (filters.joinDate) {
-      list = list.filter((e) => (e.joinDate || "").includes(filters.joinDate));
-    }
-    if (filters.position) {
-      list = list.filter((e) => e.position === filters.position);
-    }
-    if (filters.status) {
-      list = list.filter((e) => e.status === filters.status);
-    }
+    Object.entries(filters).forEach(([colKey, filterVal]) => {
+      if (!filterVal) return;
+      if (Array.isArray(filterVal)) {
+        const allowed = new Set(filterVal);
+        list = list.filter((e) => {
+          const raw = String(e[colKey] ?? "").trim();
+          const val = raw === "" ? "(Chỗ trống)" : raw;
+          return allowed.has(val);
+        });
+      } else if (typeof filterVal === "string" && filterVal.trim()) {
+        const val = filterVal.toLowerCase().trim();
+        list = list.filter((e) => String(e[colKey] ?? "").toLowerCase().includes(val));
+      }
+    });
 
     if (sortConfig.key) {
       list = [...list].sort((a, b) => {
         let valA = a[sortConfig.key];
         let valB = b[sortConfig.key];
-        valA = String(valA || "").toLowerCase();
-        valB = String(valB || "").toLowerCase();
-        if (valA < valB) return sortConfig.direction === "asc" ? -1 : 1;
-        if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
-        return 0;
+        if (valA === undefined || valA === null) valA = "";
+        if (valB === undefined || valB === null) valB = "";
+        const numA = Number(valA);
+        const numB = Number(valB);
+        if (!isNaN(numA) && !isNaN(numB) && String(valA).trim() !== "" && String(valB).trim() !== "") {
+          return sortConfig.direction === "asc" ? numA - numB : numB - numA;
+        }
+        const cmp = String(valA).localeCompare(String(valB), "vi", { numeric: true, sensitivity: "base" });
+        return sortConfig.direction === "asc" ? cmp : -cmp;
       });
     }
 
     return list;
   }, [employees, tab, query, positionFilter, joinRange, resignRange, filters, sortConfig]);
 
-  const positionFilterOptions = useMemo(
-    () => POSITION_LIST.map((p) => ({ value: p, label: `${p} / ${POSITION_ZH[p]}` })),
-    []
-  );
 
-  const statusFilterOptions = useMemo(
-    () => EMP_STATUS_DEFS.map((s) => ({ value: s.vi, label: `${s.vi} / ${s.zh}` })),
-    []
-  );
 
   return (
     <div className="space-y-5">
@@ -265,22 +248,6 @@ export function EmployeesPage() {
         actions={
           <>
             <SearchBox value={query} onChange={setQuery} placeholder="Tìm tên, mã NV... / 搜索姓名、工号..." />
-            <select
-              className={`${inputCls} v-input--w40 text-sm`}
-              value={positionFilter}
-              onChange={(e) => setPositionFilter(e.target.value)}
-            >
-              <option value="">Tất cả vị trí / 全部职位</option>
-              {POSITION_LIST.map((p) => (
-                <option key={p} value={p}>
-                  {p} / {POSITION_ZH[p]}
-                </option>
-              ))}
-            </select>
-            <DateRangeFilter label="Ngày vào làm / 入职日期" value={joinRange} onChange={setJoinRange} />
-            {tab === "resigned" && (
-              <DateRangeFilter label="Ngày rời đi / 离职日期" value={resignRange} onChange={setResignRange} />
-            )}
             <div className="flex items-center gap-1 border border-line bg-white px-2 py-1 rounded-xs">
               <button
                 type="button"
@@ -301,9 +268,6 @@ export function EmployeesPage() {
                 <Redo2 size={16} />
               </button>
             </div>
-            <button className={btnSecondary} onClick={() => setPasteOpen(true)}>
-              <ClipboardPaste size={14} /> Dán từ Excel / 从Excel粘贴
-            </button>
             <AddActionButton
               labelVi="Thêm nhân sự"
               labelZh="新增员工"
@@ -327,8 +291,8 @@ export function EmployeesPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="pe-thead text-sm">
-              <tr>
-                <th className="px-2 py-2 text-left align-top font-semibold text-ink text-sm w-12">
+              <tr className="h-10">
+                <th className="px-3 py-2 text-center align-middle font-semibold text-ink text-sm whitespace-nowrap w-12 min-w-[50px]">
                   STT
                 </th>
                 <SortableTh
@@ -339,7 +303,8 @@ export function EmployeesPage() {
                   onSort={handleSort}
                   filterValue={filters.employeeCode}
                   onFilterChange={handleFilterChange}
-                  className="w-24"
+                  data={tabEmployees}
+                  className="min-w-[110px]"
                 />
                 <SortableTh
                   labelVi="Tên VN"
@@ -349,7 +314,8 @@ export function EmployeesPage() {
                   onSort={handleSort}
                   filterValue={filters.vietnameseName}
                   onFilterChange={handleFilterChange}
-                  className="w-36"
+                  data={tabEmployees}
+                  className="min-w-[150px]"
                 />
                 <SortableTh
                   labelVi="Tên Trung"
@@ -359,7 +325,8 @@ export function EmployeesPage() {
                   onSort={handleSort}
                   filterValue={filters.chineseName}
                   onFilterChange={handleFilterChange}
-                  className="w-28"
+                  data={tabEmployees}
+                  className="min-w-[130px]"
                 />
                 <SortableTh
                   labelVi="Năm sinh"
@@ -369,7 +336,8 @@ export function EmployeesPage() {
                   onSort={handleSort}
                   filterValue={filters.birthYear}
                   onFilterChange={handleFilterChange}
-                  className="w-24"
+                  data={tabEmployees}
+                  className="min-w-[110px]"
                 />
                 <SortableTh
                   labelVi="Số điện thoại"
@@ -379,7 +347,8 @@ export function EmployeesPage() {
                   onSort={handleSort}
                   filterValue={filters.phone}
                   onFilterChange={handleFilterChange}
-                  className="w-32"
+                  data={tabEmployees}
+                  className="min-w-[130px]"
                 />
                 <SortableTh
                   labelVi="Địa chỉ"
@@ -389,7 +358,8 @@ export function EmployeesPage() {
                   onSort={handleSort}
                   filterValue={filters.address}
                   onFilterChange={handleFilterChange}
-                  className="w-44"
+                  data={tabEmployees}
+                  className="min-w-[170px]"
                 />
                 <SortableTh
                   labelVi="Ngày vào làm"
@@ -399,7 +369,8 @@ export function EmployeesPage() {
                   onSort={handleSort}
                   filterValue={filters.joinDate}
                   onFilterChange={handleFilterChange}
-                  className="w-28"
+                  data={tabEmployees}
+                  className="min-w-[130px]"
                 />
                 {tab === "resigned" && (
                   <SortableTh
@@ -410,10 +381,11 @@ export function EmployeesPage() {
                     onSort={handleSort}
                     filterValue={filters.resignDate}
                     onFilterChange={handleFilterChange}
-                    className="w-28"
+                    data={tabEmployees}
+                    className="min-w-[130px]"
                   />
                 )}
-                <th className="px-2 py-2 text-left align-top font-semibold text-ink text-sm w-24">
+                <th className="px-3 py-2 text-left align-middle font-semibold text-ink text-sm whitespace-nowrap min-w-[130px]">
                   Thâm niên / 工龄
                 </th>
                 <SortableTh
@@ -422,11 +394,10 @@ export function EmployeesPage() {
                   colKey="position"
                   sortConfig={sortConfig}
                   onSort={handleSort}
-                  filterType="select"
-                  filterOptions={positionFilterOptions}
                   filterValue={filters.position}
                   onFilterChange={handleFilterChange}
-                  className="w-36"
+                  data={tabEmployees}
+                  className="min-w-[130px]"
                 />
                 <SortableTh
                   labelVi="Trạng thái"
@@ -434,13 +405,12 @@ export function EmployeesPage() {
                   colKey="status"
                   sortConfig={sortConfig}
                   onSort={handleSort}
-                  filterType="select"
-                  filterOptions={statusFilterOptions}
                   filterValue={filters.status}
                   onFilterChange={handleFilterChange}
-                  className="w-32"
+                  data={tabEmployees}
+                  className="min-w-[120px]"
                 />
-                <th className="px-2 py-2 text-right align-top font-semibold text-ink text-sm w-28">
+                <th className="px-3 py-2 text-right align-middle font-semibold text-ink text-sm whitespace-nowrap min-w-[110px]">
                   Thao tác / 操作
                 </th>
               </tr>

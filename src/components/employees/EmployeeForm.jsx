@@ -6,7 +6,7 @@ import { suggestChineseName } from "../../lib/seed";
 import { btnPrimary, btnSecondary, inputCls } from "../../lib/styles";
 
 export function EmployeeForm({ open, onClose, onSave, initial, existingCodes }) {
-  const [form, setForm] = useState(() => initial || { employeeCode: "", vietnameseName: "", chineseName: "", birthYear: 2000, phone: "", address: "", joinDate: "", resignDate: "", resignReason: "", position: POSITION_LIST[0], status: EMP_STATUS.OFFICIAL, notes: "" });
+  const [form, setForm] = useState(() => initial || { employeeCode: "", vietnameseName: "", chineseName: "", birthYear: undefined, phone: "", address: "", joinDate: "", resignDate: "", resignReason: "", position: POSITION_LIST[0], status: EMP_STATUS.OFFICIAL, notes: "" });
   const [error, setError] = useState(""); const [suggestion, setSuggestion] = useState("");
   const set = (p) => setForm((f) => ({ ...f, ...p }));
   const submit = () => {
