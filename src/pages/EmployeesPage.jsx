@@ -508,7 +508,7 @@ export function EmployeesPage() {
                       onChange={(ev) => updateEmployee(e.id, { phone: ev.target.value })}
                     />
                   </td>
-                  <td className={`px-2 py-2 ${selCls(e.id, "address")}`} onClick={() => setSelected({ rowId: e.id, colKey: "address" })}>
+                  <td className={`px-2 py-2 ${selCls(e.id, "address")}` } onClick={() => setSelected({ rowId: e.id, colKey: "address" })}>
                     <input
                       className={`${inputCls} v-input--sm text-sm`}
                       placeholder="—"
