@@ -5,7 +5,7 @@ import { NAV_ITEMS } from "../../lib/nav";
 import { btnSecondary } from "../../lib/styles";
 
 export function Header({ page, setPage }) {
-  const { db, role, user, logout } = useApp();
+  const { db, role, user, logout, sync } = useApp();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const searchRef = useRef(null);
@@ -54,6 +54,32 @@ export function Header({ page, setPage }) {
             <div className="v-menu v-menu--left w-full min-w-[280px]">
               {results.map((r, i) => (<button key={i} className="v-menu-item" onMouseDown={() => { setPage(r.page); setQuery(""); setOpen(false); }}><span className="font-bold text-ink">{r.label}</span><span className="text-sm">{r.type}</span></button>))}
             </div>
+          )}
+        </div>
+        <div className="flex h-11 items-center gap-2 rounded-xs border border-line bg-white px-3.5 text-xs font-bold shadow-sm">
+          {sync?.status === "connected" && (
+            <span className="flex items-center gap-1.5 text-ok" title="Đã kết nối cơ sở dữ liệu Supabase">
+              <span className="h-2 w-2 rounded-full bg-ok" /> Supabase
+            </span>
+          )}
+          {sync?.status === "syncing" && (
+            <span className="flex items-center gap-1.5 text-brand" title="Đang đồng bộ dữ liệu...">
+              <span className="h-2 w-2 rounded-full bg-brand animate-pulse" /> Đang lưu…
+            </span>
+          )}
+          {sync?.status === "local" && (
+            <span className="flex items-center gap-1.5 text-mute" title="Đang lưu trên trình duyệt (Chưa cấu hình Supabase)">
+              <span className="h-2 w-2 rounded-full bg-mute" /> Cục bộ
+            </span>
+          )}
+          {(sync?.status === "offline" || sync?.status === "error") && (
+            <button
+              onClick={() => sync?.reload?.()}
+              className="flex items-center gap-1.5 text-bad hover:underline"
+              title="Lỗi kết nối Supabase - Bấm để thử lại"
+            >
+              <span className="h-2 w-2 rounded-full bg-bad animate-ping" /> Lỗi DB (Thử lại)
+            </button>
           )}
         </div>
         <div className="flex h-11 items-center gap-1.5 rounded-xs border border-line bg-white px-3.5 text-sm shadow-sm">

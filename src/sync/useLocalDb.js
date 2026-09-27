@@ -1,39 +1,157 @@
-import { useCallback, useEffect, useState } from "react";
-import { createBlankDb, seedData } from "../lib/seed";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  deleteFromSupabase,
+  employeeToDb,
+  fetchFullDatabase,
+  isSupabaseConfigured,
+  machineToDb,
+  moldToDb,
+  orderToDb,
+  scheduleToDb,
+  syncTableToSupabase,
+} from "../lib/supabase";
+import { createBlankDb } from "../lib/seed";
 import { storage } from "./storage";
 
 const LOCAL_DB_KEY = "pe_local_db_v2";
-const LEGACY_CACHE_KEY = "pe_cache_v1";
 
 export function useLocalDb() {
   const [db, setDbState] = useState(() => {
     const saved = storage.get(LOCAL_DB_KEY);
     if (saved && saved.machines && saved.machines.length > 0) return saved;
-    const legacy = storage.get(LEGACY_CACHE_KEY);
-    if (legacy && legacy.machines && legacy.machines.length > 0) {
-      storage.set(LOCAL_DB_KEY, legacy);
-      return legacy;
-    }
-    const initial = seedData();
+    const initial = createBlankDb();
     storage.set(LOCAL_DB_KEY, initial);
     return initial;
   });
 
-  const setDb = useCallback((updater) => {
-    setDbState((prev) => {
-      const next = typeof updater === "function" ? updater(prev) : updater;
-      storage.set(LOCAL_DB_KEY, next);
-      return next;
-    });
+  const [syncStatus, setSyncStatus] = useState(() =>
+    isSupabaseConfigured ? "connecting" : "local"
+  );
+  const [lastSyncedAt, setLastSyncedAt] = useState(null);
+  const prevDbRef = useRef(db);
+
+  // Fetch full data from Supabase on mount if configured
+  const reloadFromSupabase = useCallback(async () => {
+    if (!isSupabaseConfigured) {
+      setSyncStatus("local");
+      return;
+    }
+
+    try {
+      setSyncStatus("syncing");
+      const remoteData = await fetchFullDatabase();
+      if (remoteData) {
+        setDbState(remoteData);
+        prevDbRef.current = remoteData;
+        storage.set(LOCAL_DB_KEY, remoteData);
+        setSyncStatus("connected");
+        setLastSyncedAt(Date.now());
+      }
+    } catch (err) {
+      console.warn("Supabase initial fetch failed, using local cache:", err);
+      setSyncStatus("offline");
+    }
   }, []);
 
+  useEffect(() => {
+    if (isSupabaseConfigured) {
+      reloadFromSupabase();
+    }
+  }, [reloadFromSupabase]);
+
+  // Sync delta changes to Supabase
+  const syncChangesToSupabase = useCallback(async (prev, next) => {
+    if (!isSupabaseConfigured) return;
+
+    try {
+      setSyncStatus("syncing");
+
+      // 1. Employees changed
+      if (prev.employees !== next.employees) {
+        if (next.employees.length > 0) {
+          const rows = next.employees.map(employeeToDb);
+          await syncTableToSupabase("employees", rows);
+        }
+        // Handle deletions
+        const nextIds = new Set(next.employees.map((e) => e.id));
+        const removed = prev.employees.filter((e) => !nextIds.has(e.id));
+        for (const r of removed) {
+          await deleteFromSupabase("employees", r.id);
+        }
+      }
+
+      // 2. Molds changed
+      if (prev.molds !== next.molds) {
+        if (next.molds.length > 0) {
+          const rows = next.molds.map(moldToDb);
+          await syncTableToSupabase("molds", rows);
+        }
+        const nextIds = new Set(next.molds.map((m) => m.id));
+        const removed = prev.molds.filter((m) => !nextIds.has(m.id));
+        for (const r of removed) {
+          await deleteFromSupabase("molds", r.id);
+        }
+      }
+
+      // 3. Machines changed
+      if (prev.machines !== next.machines) {
+        if (next.machines.length > 0) {
+          const rows = next.machines.map(machineToDb);
+          await syncTableToSupabase("machines", rows);
+        }
+      }
+
+      // 4. Orders changed
+      if (prev.orders !== next.orders) {
+        if (next.orders.length > 0) {
+          const rows = next.orders.map(orderToDb);
+          await syncTableToSupabase("orders", rows);
+        }
+        const nextIds = new Set(next.orders.map((o) => o.id));
+        const removed = prev.orders.filter((o) => !nextIds.has(o.id));
+        for (const r of removed) {
+          await deleteFromSupabase("orders", r.id);
+        }
+      }
+
+      // 5. Schedules changed
+      if (prev.schedules !== next.schedules) {
+        const nextKeys = Object.keys(next.schedules || {});
+        for (const key of nextKeys) {
+          if (next.schedules[key] !== prev.schedules?.[key]) {
+            const row = scheduleToDb(key, next.schedules[key]);
+            await syncTableToSupabase("schedules", [row]);
+          }
+        }
+      }
+
+      setSyncStatus("connected");
+      setLastSyncedAt(Date.now());
+    } catch (err) {
+      console.error("Failed to sync delta to Supabase:", err);
+      setSyncStatus("error");
+    }
+  }, []);
+
+  const setDb = useCallback(
+    (updater) => {
+      setDbState((prev) => {
+        const next = typeof updater === "function" ? updater(prev) : updater;
+        storage.set(LOCAL_DB_KEY, next);
+        syncChangesToSupabase(prev, next);
+        prevDbRef.current = next;
+        return next;
+      });
+    },
+    [syncChangesToSupabase]
+  );
+
   const sync = {
-    status: "local",
-    lastSyncedAt: Date.now(),
-    phase: "ready",
-    hasLocalCache: true,
-    retryBoot: () => {},
-    initialize: () => {},
+    status: syncStatus,
+    lastSyncedAt,
+    isSupabase: isSupabaseConfigured,
+    reload: reloadFromSupabase,
+    retryBoot: reloadFromSupabase,
   };
 
   return { db, setDb, sync };

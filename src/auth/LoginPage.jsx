@@ -99,7 +99,7 @@ export function LoginPage() {
             </button>
             <p className="mt-5 text-center text-xs font-medium text-mute">Trạng thái đăng nhập được lưu trên trình duyệt này · 登录状态保存在本浏览器</p>
           </div>
-          <p className="mt-6 text-center text-xs font-medium text-mute">© Intco · PE Scheduler</p>
+          <p className="mt-6 text-center text-xs font-medium text-mute">© PE Scheduler</p>
         </div>
       </section>
     </div>

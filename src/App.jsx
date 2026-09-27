@@ -21,7 +21,7 @@ import { useLocalDb } from "./sync/useLocalDb";
    this component adds role, toasts, confirm dialog and page switching. */
 export default function App() {
   const { user, logout } = useAuth();
-  const userProfile = typeof user === "object" && user ? user : { username: user || "Intco", role: ROLES.ADMIN };
+  const userProfile = typeof user === "object" && user ? user : { username: user || "Admin", role: ROLES.ADMIN };
   const [role, setRole] = useState(() => userProfile.role || ROLES.ADMIN);
   const [page, setPage] = useState("schedule");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);

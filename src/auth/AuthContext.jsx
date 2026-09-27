@@ -1,6 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useState } from "react";
-import { VALID_PASSWORD, VALID_USERNAME } from "./credentials";
-import { ROLES } from "../lib/constants";
+import { authenticateSupabaseUser, isSupabaseConfigured } from "../lib/supabase";
 import { storage } from "../sync/storage";
 
 const AUTH_KEY = "pe_auth_v1";
@@ -20,17 +19,28 @@ export function AuthProvider({ children }) {
       return { ok: false, error: "Vui lòng nhập tài khoản và mật khẩu / 请输入账号和密码" };
     }
 
-    if (u.toLowerCase() === VALID_USERNAME.toLowerCase() && p === VALID_PASSWORD) {
-      const profile = { username: u, name: u, role: ROLES.ADMIN };
-      storage.set(AUTH_KEY, { user: profile, at: Date.now() });
-      setUser(profile);
-      return { ok: true, user: profile };
+    if (!isSupabaseConfigured) {
+      return {
+        ok: false,
+        error: "Chưa cấu hình Supabase! Vui lòng điền VITE_SUPABASE_URL và VITE_SUPABASE_ANON_KEY vào file .env",
+      };
     }
 
-    return { ok: false, error: "Sai tài khoản hoặc mật khẩu / 账号或密码错误" };
+    const res = await authenticateSupabaseUser(u, p);
+    if (res.ok && res.user) {
+      storage.set(AUTH_KEY, { user: res.user, at: Date.now() });
+      setUser(res.user);
+      return { ok: true, user: res.user };
+    }
+
+    return { ok: false, error: res.error || "Sai tài khoản hoặc mật khẩu / 账号或密码错误" };
   }, []);
 
-  const logout = useCallback(() => { storage.remove(AUTH_KEY); setUser(null); }, []);
+  const logout = useCallback(() => {
+    storage.remove(AUTH_KEY);
+    setUser(null);
+  }, []);
+
   const value = useMemo(() => ({ user, isAuthed: !!user, login, logout }), [user, login, logout]);
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
