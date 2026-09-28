@@ -18,9 +18,10 @@ import { downloadEmployeeTemplate, parseAndDedupEmployees } from "../lib/excel";
 import { byId } from "../lib/schedule";
 import { btnIcon, btnSecondary, card, inputCls } from "../lib/styles";
 import { useTableHistory } from "../lib/useTableHistory";
+import { getPositionLabel, getStatusLabel, t } from "../lib/i18n";
 
 export function EmployeesPage() {
-  const { db, setDb, pushToast, confirmAction } = useApp();
+  const { db, setDb, pushToast, confirmAction, lang = "vi" } = useApp();
   const [selected, setSelected] = useState(null);
   const clipRef = useRef(null);
   const machinesById = useMemo(() => byId(db.machines), [db.machines]);
@@ -242,57 +243,60 @@ export function EmployeesPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        vi="Nhân sự"
-        zh="人员管理"
-        actions={
-          <>
-            <SearchBox value={query} onChange={setQuery} placeholder="Tìm tên, mã NV... / 搜索姓名、工号..." />
-            <div className="flex items-center gap-1 border border-line bg-white px-2 py-1 rounded-xs">
-              <button
-                type="button"
-                className="p-1 hover:text-[#2051A3] disabled:opacity-40 disabled:hover:text-inherit"
-                disabled={!canUndo}
-                onClick={undo}
-                title="Hoàn tác / 撤销 (Ctrl+Z)"
-              >
-                <Undo2 size={16} />
-              </button>
-              <button
-                type="button"
-                className="p-1 hover:text-[#2051A3] disabled:opacity-40 disabled:hover:text-inherit"
-                disabled={!canRedo}
-                onClick={redo}
-                title="Làm lại / 重做 (Ctrl+Y)"
-              >
-                <Redo2 size={16} />
-              </button>
-            </div>
-            <AddActionButton
-              labelVi="Thêm nhân sự"
-              labelZh="新增员工"
-              onManualAdd={() => setForm({})}
-              onExcelAdd={() => setExcelOpen(true)}
-            />
-          </>
-        }
-      />
+      <div className="sticky top-0 z-20 bg-[#F4F7FE] pb-2 space-y-3">
+        <PageHeader
+          vi="Nhân sự"
+          zh="人员管理"
+          actions={
+            <>
+              <SearchBox value={query} onChange={setQuery} placeholder={t("searchEmpPlaceholder", lang)} />
+              <div className="flex items-center gap-1 border border-line bg-white px-2 py-1 rounded-xs">
+                <button
+                  type="button"
+                  className="p-1 hover:text-[#2051A3] disabled:opacity-40 disabled:hover:text-inherit"
+                  disabled={!canUndo}
+                  onClick={undo}
+                  title={t("undo", lang)}
+                >
+                  <Undo2 size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="p-1 hover:text-[#2051A3] disabled:opacity-40 disabled:hover:text-inherit"
+                  disabled={!canRedo}
+                  onClick={redo}
+                  title={t("redo", lang)}
+                >
+                  <Redo2 size={16} />
+                </button>
+              </div>
+              <AddActionButton
+                labelVi="Thêm nhân sự"
+                labelZh="新增员工"
+                labelEn="Add Employee"
+                onManualAdd={() => setForm({})}
+                onExcelAdd={() => setExcelOpen(true)}
+              />
+            </>
+          }
+        />
 
-      <Segmented
-        value={tab}
-        onChange={setTab}
-        items={[
-          { key: "active", label: `Đang làm việc / 在职 (${employees.filter((e) => isActive(e)).length})` },
-          { key: "resigned", label: `Nghỉ việc / 离职 (${employees.filter((e) => !isActive(e)).length})` },
-        ]}
-      />
+        <Segmented
+          value={tab}
+          onChange={setTab}
+          items={[
+            { key: "active", label: `${t("activeEmployees", lang)} (${employees.filter((e) => isActive(e)).length})` },
+            { key: "resigned", label: `${t("resignedEmployees", lang)} (${employees.filter((e) => !isActive(e)).length})` },
+          ]}
+        />
+      </div>
 
       <div className={`${card} overflow-hidden`}>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="pe-thead text-sm">
+        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-270px)]">
+          <table className="w-full text-sm border-separate border-spacing-0">
+            <thead className="pe-thead text-sm sticky top-0 z-10 bg-[#F8FAFC] shadow-xs">
               <tr className="h-10">
-                <th className="px-3 py-2 text-center align-middle font-semibold text-ink text-sm whitespace-nowrap w-12 min-w-[50px]">
+                <th className="px-3 py-2 text-center align-middle font-semibold text-ink text-sm whitespace-nowrap w-12 min-w-[50px] bg-[#F8FAFC]">
                   STT
                 </th>
                 <SortableTh
@@ -352,34 +356,39 @@ export function EmployeesPage() {
                     className="min-w-[130px]"
                   />
                 )}
-                <th className="px-3 py-2 text-left align-middle font-semibold text-ink text-sm whitespace-nowrap min-w-[130px]">
-                  Thâm niên / 工龄
+                <th className="px-3 py-2 text-left align-middle font-semibold text-ink text-sm whitespace-nowrap min-w-[120px]">
+                  {t("seniority", lang)}
                 </th>
                 <SortableTh
                   labelVi="Vị trí"
                   labelZh="职位"
+                  labelEn="Position"
                   colKey="position"
                   sortConfig={sortConfig}
                   onSort={handleSort}
                   filterValue={filters.position}
                   onFilterChange={handleFilterChange}
                   data={tabEmployees}
-                  className="min-w-[130px]"
+                  getDisplayValue={(e) => getPositionLabel(e.position, lang)}
+                  className="min-w-[175px]"
                 />
                 <SortableTh
                   labelVi="Trạng thái"
                   labelZh="状态"
+                  labelEn="Status"
                   colKey="status"
                   sortConfig={sortConfig}
                   onSort={handleSort}
                   filterValue={filters.status}
                   onFilterChange={handleFilterChange}
                   data={tabEmployees}
-                  className="min-w-[120px]"
+                  getDisplayValue={(e) => getStatusLabel(e.status, lang)}
+                  className="min-w-[135px]"
                 />
                  <SortableTh
                   labelVi="Năm sinh"
                   labelZh="出生年"
+                  labelEn="Birth Year"
                   colKey="birthYear"
                   sortConfig={sortConfig}
                   onSort={handleSort}
@@ -391,6 +400,7 @@ export function EmployeesPage() {
                 <SortableTh
                   labelVi="Số điện thoại"
                   labelZh="电话"
+                  labelEn="Phone"
                   colKey="phone"
                   sortConfig={sortConfig}
                   onSort={handleSort}
@@ -402,6 +412,7 @@ export function EmployeesPage() {
                 <SortableTh
                   labelVi="Địa chỉ"
                   labelZh="地址"
+                  labelEn="Address"
                   colKey="address"
                   sortConfig={sortConfig}
                   onSort={handleSort}
@@ -410,8 +421,8 @@ export function EmployeesPage() {
                   data={tabEmployees}
                   className="min-w-[170px]"
                 />
-                <th className="px-3 py-2 text-right align-middle font-semibold text-ink text-sm whitespace-nowrap min-w-[110px]">
-                  Thao tác / 操作
+                <th className="px-3 py-2 text-right align-middle font-semibold text-ink text-sm whitespace-nowrap min-w-[100px] bg-[#F8FAFC]">
+                  {t("actions", lang)}
                 </th>
               </tr>
             </thead>
@@ -465,29 +476,29 @@ export function EmployeesPage() {
                   <td className="px-2 py-2 text-sm text-ink whitespace-nowrap">
                     {formatSeniority(e.joinDate, e.resignDate) || "—"}
                   </td>
-                  <td className={`px-2 py-2 ${selCls(e.id, "position")}`} onClick={() => setSelected({ rowId: e.id, colKey: "position" })}>
+                  <td className={`px-2 py-2 min-w-[175px] ${selCls(e.id, "position")}`} onClick={() => setSelected({ rowId: e.id, colKey: "position" })}>
                     <select
-                      className={`${inputCls} v-input--sm text-sm`}
+                      className={`${inputCls} v-input--sm text-sm w-full font-medium`}
                       value={e.position}
                       onChange={(ev) => updateEmployee(e.id, { position: ev.target.value })}
                     >
                       {POSITION_LIST.map((p) => (
                         <option key={p} value={p}>
-                          {p} / {POSITION_ZH[p]}
+                          {getPositionLabel(p, lang)}
                         </option>
                       ))}
                     </select>
                   </td>
                   
-                  <td className={`px-2 py-2 ${selCls(e.id, "status")}`} onClick={() => setSelected({ rowId: e.id, colKey: "status" })}>
+                  <td className={`px-2 py-2 min-w-[135px] ${selCls(e.id, "status")}`} onClick={() => setSelected({ rowId: e.id, colKey: "status" })}>
                     <select
-                      className={`border border-transparent px-2 py-1 text-sm font-bold cursor-pointer rounded-xs ${EMP_STATUS_COLOR[e.status] || ""}`}
+                      className={`border border-transparent px-2 py-1 text-sm font-bold cursor-pointer rounded-xs w-full ${EMP_STATUS_COLOR[e.status] || ""}`}
                       value={e.status}
                       onChange={(ev) => handleStatusChange(e, ev.target.value)}
                     >
                       {EMP_STATUS_DEFS.map((s) => (
                         <option key={s.vi} value={s.vi}>
-                          {s.vi} / {s.zh}
+                          {getStatusLabel(s.vi, lang)}
                         </option>
                       ))}
                     </select>

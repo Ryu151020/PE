@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowDown, ArrowUp, Check, Filter, Search } from "lucide-react";
+import { useApp } from "../../context/AppContext";
+import { t } from "../../lib/i18n";
 
 export function SortableTh({
   labelVi,
   labelZh,
+  labelEn,
   colKey,
   sortConfig,
   onSort,
@@ -15,6 +18,7 @@ export function SortableTh({
   className = "",
   style = {},
 }) {
+  const { lang = "vi" } = useApp() || {};
   const [isOpen, setIsOpen] = useState(false);
   const [searchVal, setSearchVal] = useState("");
   const thRef = useRef(null);
@@ -24,6 +28,13 @@ export function SortableTh({
   const isSorted = sortConfig && sortConfig.key === colKey;
   const sortDirection = isSorted ? sortConfig.direction : null;
   const isFiltered = Boolean(filterValue && Array.isArray(filterValue));
+
+  const displayLabel =
+    lang === "zh"
+      ? (labelZh || t(labelVi, "zh") || labelVi)
+      : lang === "en"
+      ? (labelEn || t(labelVi, "en") || labelVi)
+      : labelVi;
 
   // Extract all distinct values for this column from data
   const allUniqueValues = useMemo(() => {
@@ -41,10 +52,10 @@ export function SortableTh({
       a.localeCompare(b, "vi", { numeric: true, sensitivity: "base" })
     );
     if (hasBlank) {
-      sorted.unshift("(Chỗ trống)");
+      sorted.unshift(t("emptySpot", lang));
     }
     return sorted;
-  }, [data, colKey, getDisplayValue]);
+  }, [data, colKey, getDisplayValue, lang]);
 
   // Draft selected values while popup is open
   const [draftSelected, setDraftSelected] = useState(() => new Set(allUniqueValues));
@@ -53,7 +64,7 @@ export function SortableTh({
   const handleOpen = () => {
     if (thRef.current) {
       const rect = thRef.current.getBoundingClientRect();
-      const popoverWidth = 270;
+      const popoverWidth = 275;
       let left = rect.left;
       if (left + popoverWidth > window.innerWidth - 12) {
         left = window.innerWidth - popoverWidth - 12;
@@ -141,7 +152,6 @@ export function SortableTh({
 
   const handleApply = () => {
     if (onFilterChange) {
-      // If all unique values are selected, clear filter (no restriction)
       if (draftSelected.size >= allUniqueValues.length) {
         onFilterChange(colKey, null);
       } else {
@@ -162,8 +172,8 @@ export function SortableTh({
   return (
     <th
       ref={thRef}
-      className={`px-3 py-2 text-left align-middle font-semibold text-ink text-sm select-none whitespace-nowrap transition-colors ${
-        isOpen ? "bg-[#e8f0fe]" : "hover:bg-[#f1f3f4]"
+      className={`px-3 py-2 text-left align-middle font-semibold text-ink text-sm select-none whitespace-nowrap transition-colors bg-[#F8FAFC] ${
+        isOpen ? "!bg-[#e8f0fe]" : "hover:bg-[#edf2f7]"
       } ${className}`}
       style={style}
     >
@@ -171,10 +181,9 @@ export function SortableTh({
         <div
           className="flex items-center gap-1 cursor-pointer flex-1 whitespace-nowrap"
           onClick={handleOpen}
-          title="Bấm để lọc hoặc sắp xếp cột này"
+          title={lang === "zh" ? "点击以筛选或排序此列" : lang === "en" ? "Click to filter or sort" : "Bấm để lọc hoặc sắp xếp cột này"}
         >
-          <span className="whitespace-nowrap">{labelVi}</span>
-          {labelZh && <span className="text-xs text-mute font-normal whitespace-nowrap">/ {labelZh}</span>}
+          <span className="whitespace-nowrap">{displayLabel}</span>
         </div>
 
         <button
@@ -191,7 +200,7 @@ export function SortableTh({
               ? "bg-[#1a73e8] text-white hover:bg-[#1557b0]"
               : "text-[#5f6368] hover:text-[#202124]"
           }`}
-          title="Tùy chọn sắp xếp & bộ lọc"
+          title={lang === "zh" ? "排序和筛选选项" : lang === "en" ? "Sort and filter options" : "Tùy chọn sắp xếp & bộ lọc"}
         >
           {sortDirection === "asc" ? (
             <ArrowUp size={13} strokeWidth={2.5} />
@@ -214,7 +223,7 @@ export function SortableTh({
               position: "fixed",
               top: coords.top,
               left: coords.left,
-              zIndex: 9999,
+              zIndex: 99999,
             }}
             className="w-[275px] bg-white rounded-md shadow-2xl border border-[#dadce0] text-xs font-sans text-[#202124] animate-in fade-in duration-100"
           >
@@ -227,7 +236,7 @@ export function SortableTh({
                   sortDirection === "asc" ? "bg-[#e8f0fe] text-[#1a73e8] font-bold" : "text-[#3c4043]"
                 }`}
               >
-                <span>Sắp xếp A đến Z</span>
+                <span>{t("sortAsc", lang)}</span>
                 {sortDirection === "asc" && <Check size={14} className="text-[#1a73e8]" />}
               </button>
 
@@ -238,7 +247,7 @@ export function SortableTh({
                   sortDirection === "desc" ? "bg-[#e8f0fe] text-[#1a73e8] font-bold" : "text-[#3c4043]"
                 }`}
               >
-                <span>Sắp xếp Z đến A</span>
+                <span>{t("sortDesc", lang)}</span>
                 {sortDirection === "desc" && <Check size={14} className="text-[#1a73e8]" />}
               </button>
             </div>
@@ -249,7 +258,7 @@ export function SortableTh({
             <div className="pt-1">
               <div className="px-4 py-1 flex items-center gap-1 text-[13px] font-medium text-[#202124]">
                 <span className="text-[10px] text-[#5f6368]">▼</span>
-                <span>Lọc theo giá trị</span>
+                <span>{lang === "zh" ? "按值筛选" : lang === "en" ? "Filter by value" : "Lọc theo giá trị"}</span>
               </div>
 
               {/* Action Links */}
@@ -260,7 +269,7 @@ export function SortableTh({
                     onClick={handleSelectAllVisible}
                     className="text-[#1a73e8] hover:underline cursor-pointer font-medium"
                   >
-                    Chọn tất cả {allUniqueValues.length}
+                    {t("selectAll", lang)} ({allUniqueValues.length})
                   </button>
                   <span className="text-[#dadce0]">-</span>
                   <button
@@ -268,12 +277,9 @@ export function SortableTh({
                     onClick={handleClearAll}
                     className="text-[#1a73e8] hover:underline cursor-pointer font-medium"
                   >
-                    Xóa
+                    {t("clearFilter", lang)}
                   </button>
                 </div>
-                <span className="text-[#70757a] text-[11px]">
-                  Đang hiển thị {visibleList.length}
-                </span>
               </div>
 
               {/* Search Box */}
@@ -282,7 +288,7 @@ export function SortableTh({
                   type="text"
                   value={searchVal}
                   onChange={(e) => setSearchVal(e.target.value)}
-                  placeholder=""
+                  placeholder={t("search", lang)}
                   autoFocus
                   className="w-full border border-[#dadce0] rounded py-1 pl-2.5 pr-7 text-xs text-[#202124] focus:outline-none focus:border-[#137333] h-7"
                 />
@@ -293,7 +299,7 @@ export function SortableTh({
               <div className="mx-2 max-h-40 overflow-y-auto pr-1 space-y-0.5">
                 {visibleList.length === 0 ? (
                   <div className="px-3 py-2 text-center text-xs text-mute">
-                    Không tìm thấy giá trị phù hợp
+                    {t("notFound", lang)}
                   </div>
                 ) : (
                   visibleList.map((val) => {
@@ -309,7 +315,7 @@ export function SortableTh({
                           onChange={() => handleToggleValue(val)}
                           className="w-3.5 h-3.5 rounded text-[#137333] accent-[#137333] cursor-pointer"
                         />
-                        <span className={`truncate ${val === "(Chỗ trống)" ? "italic text-mute" : ""}`}>
+                        <span className={`truncate ${val === t("emptySpot", lang) ? "italic text-mute" : ""}`}>
                           {val}
                         </span>
                       </label>
@@ -326,7 +332,7 @@ export function SortableTh({
                 onClick={() => setIsOpen(false)}
                 className="px-3.5 py-1 text-xs font-semibold rounded border border-[#dadce0] text-[#137333] bg-white hover:bg-gray-50 cursor-pointer h-7 transition-colors"
               >
-                Hủy
+                {t("cancel", lang)}
               </button>
               <button
                 type="button"

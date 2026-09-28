@@ -55,7 +55,13 @@ export default function App() {
     setConfirmState({ message, onConfirm, title: opts?.title, confirmLabel: opts?.confirmLabel, danger: opts?.danger });
   }, []);
 
-  const ctx = { db, setDb, role, setRole, toasts, pushToast, dismissToast, confirmAction, sync, user, logout };
+  const [lang, setLangState] = useState(() => localStorage.getItem("pe_lang") || "vi");
+  const setLang = useCallback((newLang) => {
+    setLangState(newLang);
+    localStorage.setItem("pe_lang", newLang);
+  }, []);
+
+  const ctx = { db, setDb, role, setRole, toasts, pushToast, dismissToast, confirmAction, sync, user, logout, lang, setLang };
 
   return (
     <AppCtx.Provider value={ctx}>

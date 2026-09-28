@@ -3,11 +3,14 @@ import { EmployeeMultiSelect } from "./EmployeeChip";
 import { ShiftOvertimeBadge } from "./ShiftOvertimeBadge";
 import { StackedStatusBadge } from "../ui/Badges";
 import { SearchableSelect } from "../ui/SearchableSelect";
+import { useApp } from "../../context/AppContext";
 import { MACHINE_STATUS_COLOR, MACHINE_STATUS_DEFS, MACHINE_STATUS_TEXT_COLOR, getMoldColor } from "../../lib/constants";
+import { getMachineStatusLabel } from "../../lib/i18n";
 import { inputCls } from "../../lib/styles";
 import { entryMachineStatus } from "../../lib/schedule";
 
 export function ScheduleRow({ machine, entry, molds, orders, ordersById, editable, activeWorkers, techniciansPool, supportPool, onPatchEntry, selection, onSelectCell, onCellMouseDown, onCellEnter, onDropEmployee, employeesById, dayCollapsed, nightCollapsed }) {
+  const { lang = "vi" } = useApp() || {};
   const L0 = 0, L1 = 56, L2 = 176, W0 = 56, W1 = 120, W2 = 140;
   const selInfo = (colKey) => {
     if (!selection || !selection.colKeys.includes(colKey) || !selection.machineIds.includes(machine.id)) return null;
@@ -65,7 +68,7 @@ export function ScheduleRow({ machine, entry, molds, orders, ordersById, editabl
       <td className={`z-10 bg-white border-r border-b border-line px-2 py-1.5 `} style={{ position: "sticky", left: L1, width: W1, minWidth: W1, maxWidth: W1, ...selStickyStyle("machineStatus") }} onMouseDown={(e) => onCellMouseDown(e, "machineStatus", machine.id)} onMouseEnter={() => onCellEnter("machineStatus", machine.id)} onClick={(e) => onSelectCell("machineStatus", machine.id, e.shiftKey)}>
         {editable ? (
           <select className="rounded-xs border font-bold text-xs py-1 px-1 w-full" style={{ borderColor: MACHINE_STATUS_TEXT_COLOR[machineStatus], color: MACHINE_STATUS_TEXT_COLOR[machineStatus] }} value={machineStatus} onChange={(e) => onPatchEntry({ machineStatus: e.target.value })}>
-            {Object.entries(MACHINE_STATUS_DEFS).map(([k, v]) => <option key={k} value={k}>{v.vi}</option>)}
+            {Object.entries(MACHINE_STATUS_DEFS).map(([k]) => <option key={k} value={k}>{getMachineStatusLabel(k, lang)}</option>)}
           </select>
         ) : (<StackedStatusBadge vi={st.vi} zh={st.zh} className={MACHINE_STATUS_COLOR[machineStatus]} />)}
       </td>

@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, X } from "lucide-react";
-import { EMP_STATUS_TAG, EMP_STATUS_ZH, POSITIONS, POSITION_ZH } from "../../lib/constants";
+import { useApp } from "../../context/AppContext";
+import { EMP_STATUS_TAG, POSITIONS } from "../../lib/constants";
+import { getPositionLabel, getStatusLabel, t } from "../../lib/i18n";
 import { inputCls } from "../../lib/styles";
 
 /* ============================================================
@@ -47,6 +49,7 @@ export const CHIP_POPOVER_W = 220, CHIP_POPOVER_H = 128;
 /* Renders the single, shared hover popover. Mounted once near the app root
    (outside the scrolling table) so it always paints above every other cell. */
 export function ChipHoverPopover() {
+  const { lang = "vi" } = useApp() || {};
   const hover = useChipHoverState();
   if (!hover) return null;
   const { employee, rect } = hover;
@@ -63,11 +66,11 @@ export function ChipHoverPopover() {
       onMouseEnter={() => publishChipHover(hover)} onMouseLeave={scheduleChipHoverClose}
     >
       <div className="font-semibold text-ink">{employee.vietnameseName}</div>
-      <div className="text-mute">{employee.chineseName || "Chưa cập nhật tên Trung / 未更新中文名"}</div>
+      <div className="text-mute">{employee.chineseName || (lang === "zh" ? "未更新中文名" : lang === "en" ? "No Chinese name" : "Chưa cập nhật tên Trung")}</div>
       <div className="mt-1.5 grid grid-cols-2 gap-y-1 text-mute">
-        <span>Mã NV / 工号:</span><span className="text-ink">{employee.employeeCode}</span>
-        <span>Chức vụ / 职位:</span><span className="text-ink">{employee.position} / {POSITION_ZH[employee.position]}</span>
-        <span>Trạng thái / 状态:</span><span className="text-ink">{employee.status} / {EMP_STATUS_ZH[employee.status]}</span>
+        <span>{t("empCode", lang)}:</span><span className="text-ink font-medium">{employee.employeeCode}</span>
+        <span>{t("position", lang)}:</span><span className="text-ink font-medium">{getPositionLabel(employee.position, lang)}</span>
+        <span>{t("status", lang)}:</span><span className="text-ink font-medium">{getStatusLabel(employee.status, lang)}</span>
       </div>
     </div>
   );

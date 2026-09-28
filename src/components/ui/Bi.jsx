@@ -1,12 +1,32 @@
+import { useApp } from "../../context/AppContext";
+import { t } from "../../lib/i18n";
+
 /* ============================================================
-   BILINGUAL LABEL HELPER
+   LANGUAGE-AWARE LABEL HELPER (VI / ZH / EN)
+   Shows clean, single-language text according to current lang
    ============================================================ */
-export function Bi({ vi, zh, viClass = "", zhClass = "", center, inline }) {
-  if (inline) return <span className={viClass}>{vi}{zh && <span className={`ml-1 text-mute ${zhClass}`}>{zh}</span>}</span>;
+export function Bi({ vi, zh, en, viClass = "", zhClass = "", enClass = "", center, inline, className = "" }) {
+  const app = useApp();
+  const lang = app?.lang || "vi";
+
+  let text = vi;
+  let cls = viClass;
+
+  if (lang === "zh") {
+    text = zh || t(vi, "zh") || vi;
+    cls = zhClass || viClass;
+  } else if (lang === "en") {
+    text = en || t(vi, "en") || vi;
+    cls = enClass || viClass;
+  }
+
+  if (inline) {
+    return <span className={`${cls || ""} ${className}`}>{text}</span>;
+  }
+
   return (
-    <span className={`flex flex-col leading-tight ${center ? "items-center text-center" : ""}`}>
-      <span className={viClass || "text-sm font-semibold"}>{vi}</span>
-      {zh && <span className={zhClass || "text-xs text-mute"}>{zh}</span>}
+    <span className={`inline-flex flex-col leading-tight ${center ? "items-center text-center" : ""} ${className}`}>
+      <span className={cls || "text-sm font-semibold"}>{text}</span>
     </span>
   );
 }

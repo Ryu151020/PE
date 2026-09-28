@@ -11,9 +11,10 @@ import { downloadMoldTemplate, parseAndDedupMolds } from "../lib/excel";
 import { btnIcon, btnSecondary, card, inputCls } from "../lib/styles";
 import { useTableHistory } from "../lib/useTableHistory";
 import { SortableTh } from "../components/ui/SortableTh";
+import { getMoldStatusLabel, t } from "../lib/i18n";
 
 export function MachinesPage() {
-  const { db, setDb, pushToast, confirmAction } = useApp();
+  const { db, setDb, pushToast, confirmAction, lang = "vi" } = useApp();
   const [query, setQuery] = useState("");
   const [moldForm, setMoldForm] = useState(null);
   const [excelOpen, setExcelOpen] = useState(false);
@@ -165,45 +166,48 @@ export function MachinesPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        vi="Dữ liệu khuôn máy"
-        zh="模具数据"
-        actions={
-          <>
-            <SearchBox value={query} onChange={setQuery} placeholder="Tìm khuôn... / 搜索模具..." />
-            <div className="flex items-center gap-1 border border-line bg-white px-2 py-1 rounded-xs">
-              <button
-                type="button"
-                className="p-1 hover:text-[#2051A3] disabled:opacity-40 disabled:hover:text-inherit"
-                disabled={!canUndo}
-                onClick={undo}
-                title="Hoàn tác / 撤销 (Ctrl+Z)"
-              >
-                <Undo2 size={16} />
-              </button>
-              <button
-                type="button"
-                className="p-1 hover:text-[#2051A3] disabled:opacity-40 disabled:hover:text-inherit"
-                disabled={!canRedo}
-                onClick={redo}
-                title="Làm lại / 重做 (Ctrl+Y)"
-              >
-                <Redo2 size={16} />
-              </button>
-            </div>
-            <AddActionButton
-              labelVi="Thêm khuôn"
-              labelZh="新增"
-              onManualAdd={() => setMoldForm({})}
-              onExcelAdd={() => setExcelOpen(true)}
-            />
-          </>
-        }
-      />
+      <div className="sticky top-0 z-20 bg-[#F4F7FE] pb-2">
+        <PageHeader
+          vi="Dữ liệu khuôn máy"
+          zh="模具数据"
+          actions={
+            <>
+              <SearchBox value={query} onChange={setQuery} placeholder={t("searchMoldPlaceholder", lang)} />
+              <div className="flex items-center gap-1 border border-line bg-white px-2 py-1 rounded-xs">
+                <button
+                  type="button"
+                  className="p-1 hover:text-[#2051A3] disabled:opacity-40 disabled:hover:text-inherit"
+                  disabled={!canUndo}
+                  onClick={undo}
+                  title={t("undo", lang)}
+                >
+                  <Undo2 size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="p-1 hover:text-[#2051A3] disabled:opacity-40 disabled:hover:text-inherit"
+                  disabled={!canRedo}
+                  onClick={redo}
+                  title={t("redo", lang)}
+                >
+                  <Redo2 size={16} />
+                </button>
+              </div>
+              <AddActionButton
+                labelVi="Thêm khuôn"
+                labelZh="新增模具"
+                labelEn="Add Mold"
+                onManualAdd={() => setMoldForm({})}
+                onExcelAdd={() => setExcelOpen(true)}
+              />
+            </>
+          }
+        />
+      </div>
 
       <div className={`${card} overflow-hidden bg-white`}>
-        <div className="overflow-x-auto">
-          <table className="w-full table-fixed text-sm">
+        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-215px)]">
+          <table className="w-full table-fixed text-sm border-separate border-spacing-0">
             <colgroup>
               <col className="w-[8%]" />
               <col className="w-[28%]" />
@@ -211,14 +215,15 @@ export function MachinesPage() {
               <col className="w-[24%]" />
               <col className="w-[16%]" />
             </colgroup>
-            <thead className="pe-thead text-sm">
+            <thead className="pe-thead text-sm sticky top-0 z-10 bg-[#F8FAFC] shadow-xs">
               <tr className="h-10">
-                <th className="px-3 py-2 text-center align-middle font-semibold text-ink text-sm whitespace-nowrap">
-                  STT / 序号
+                <th className="px-3 py-2 text-center align-middle font-semibold text-ink text-sm whitespace-nowrap bg-[#F8FAFC]">
+                  {t("stt", lang)}
                 </th>
                 <SortableTh
                   labelVi="Tên khuôn"
                   labelZh="模具名称"
+                  labelEn="Mold Name"
                   colKey="moldName"
                   sortConfig={sortConfig}
                   onSort={handleSort}
@@ -229,16 +234,19 @@ export function MachinesPage() {
                 <SortableTh
                   labelVi="Trạng thái"
                   labelZh="状态"
+                  labelEn="Status"
                   colKey="status"
                   sortConfig={sortConfig}
                   onSort={handleSort}
                   filterValue={filters.status}
                   onFilterChange={handleFilterChange}
                   data={molds}
+                  getDisplayValue={(m) => getMoldStatusLabel(m.status, lang)}
                 />
                 <SortableTh
                   labelVi="Ghi chú"
                   labelZh="备注"
+                  labelEn="Notes"
                   colKey="notes"
                   sortConfig={sortConfig}
                   onSort={handleSort}
@@ -246,8 +254,8 @@ export function MachinesPage() {
                   onFilterChange={handleFilterChange}
                   data={molds}
                 />
-                <th className="px-3 py-2 text-right align-middle font-semibold text-ink text-sm whitespace-nowrap">
-                  Thao tác / 操作
+                <th className="px-3 py-2 text-right align-middle font-semibold text-ink text-sm whitespace-nowrap bg-[#F8FAFC]">
+                  {t("actions", lang)}
                 </th>
               </tr>
             </thead>

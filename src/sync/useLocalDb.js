@@ -41,11 +41,46 @@ export function useLocalDb() {
       setSyncStatus("syncing");
       const remoteData = await fetchFullDatabase();
       if (remoteData) {
-        setDbState(remoteData);
-        prevDbRef.current = remoteData;
-        storage.set(LOCAL_DB_KEY, remoteData);
+        // Intelligently merge schedules so locally saved/cached schedules are never wiped out
+        const localCached = storage.get(LOCAL_DB_KEY);
+        const mergedSchedules = { ...(remoteData.schedules || {}) };
+
+        if (localCached?.schedules) {
+          Object.entries(localCached.schedules).forEach(([d, locSched]) => {
+            if (!locSched) return;
+            const remSched = remoteData.schedules?.[d];
+            if (!remSched) {
+              mergedSchedules[d] = locSched;
+            } else if (locSched.updatedAt && remSched.updatedAt) {
+              if (new Date(locSched.updatedAt) > new Date(remSched.updatedAt)) {
+                mergedSchedules[d] = locSched;
+              }
+            }
+          });
+        }
+
+        const mergedData = {
+          ...remoteData,
+          schedules: mergedSchedules,
+        };
+
+        setDbState(mergedData);
+        prevDbRef.current = mergedData;
+        storage.set(LOCAL_DB_KEY, mergedData);
         setSyncStatus("connected");
         setLastSyncedAt(Date.now());
+
+        // Background sync: push any locally cached schedules that are missing or newer in Supabase
+        if (localCached?.schedules) {
+          for (const [k, s] of Object.entries(localCached.schedules)) {
+            if (!s) continue;
+            const remSched = remoteData.schedules?.[k];
+            if (!remSched || (s.updatedAt && (!remSched.updatedAt || new Date(s.updatedAt) > new Date(remSched.updatedAt)))) {
+              const row = scheduleToDb(k, s);
+              await syncTableToSupabase("schedules", [row], "date");
+            }
+          }
+        }
       }
     } catch (err) {
       console.warn("Supabase initial fetch failed, using local cache:", err);
@@ -120,8 +155,16 @@ export function useLocalDb() {
         for (const key of nextKeys) {
           if (next.schedules[key] !== prev.schedules?.[key]) {
             const row = scheduleToDb(key, next.schedules[key]);
-            await syncTableToSupabase("schedules", [row]);
+            const res = await syncTableToSupabase("schedules", [row], "date");
+            if (!res.ok) console.error("Failed to sync schedule:", res.error);
           }
+        }
+        // Handle schedule deletions
+        const prevKeys = Object.keys(prev.schedules || {});
+        const nextKeysSet = new Set(nextKeys);
+        const removedKeys = prevKeys.filter((k) => !nextKeysSet.has(k) || !next.schedules[k]);
+        for (const k of removedKeys) {
+          await deleteFromSupabase("schedules", k);
         }
       }
 
@@ -138,8 +181,11 @@ export function useLocalDb() {
       setDbState((prev) => {
         const next = typeof updater === "function" ? updater(prev) : updater;
         storage.set(LOCAL_DB_KEY, next);
-        syncChangesToSupabase(prev, next);
+        const previous = prevDbRef.current || prev;
         prevDbRef.current = next;
+        setTimeout(() => {
+          syncChangesToSupabase(previous, next);
+        }, 0);
         return next;
       });
     },

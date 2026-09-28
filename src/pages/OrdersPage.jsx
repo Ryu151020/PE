@@ -11,9 +11,10 @@ import { useApp } from "../context/AppContext";
 import { downloadOrderTemplate, parseAndDedupOrders } from "../lib/excel";
 import { btnIcon, btnSecondary, card, inputCls } from "../lib/styles";
 import { useTableHistory } from "../lib/useTableHistory";
+import { t } from "../lib/i18n";
 
 export function OrdersPage() {
-  const { db, setDb, pushToast, confirmAction } = useApp();
+  const { db, setDb, pushToast, confirmAction, lang = "vi" } = useApp();
   const [tab, setTab] = useState("open");
   const [query, setQuery] = useState("");
   const [addOpen, setAddOpen] = useState(false);
@@ -209,54 +210,57 @@ export function OrdersPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader
-        vi="Dữ liệu đơn hàng"
-        zh="订单数据"
-        actions={
-          <>
-            <SearchBox value={query} onChange={setQuery} placeholder="Tìm mã đơn... / 搜索订单..." />
-            <div className="flex items-center gap-1 border border-line bg-white px-2 py-1 rounded-xs">
-              <button
-                type="button"
-                className="p-1 hover:text-[#2051A3] disabled:opacity-40 disabled:hover:text-inherit"
-                disabled={!canUndo}
-                onClick={undo}
-                title="Hoàn tác / 撤销 (Ctrl+Z)"
-              >
-                <Undo2 size={16} />
-              </button>
-              <button
-                type="button"
-                className="p-1 hover:text-[#2051A3] disabled:opacity-40 disabled:hover:text-inherit"
-                disabled={!canRedo}
-                onClick={redo}
-                title="Làm lại / 重做 (Ctrl+Y)"
-              >
-                <Redo2 size={16} />
-              </button>
-            </div>
-            <AddActionButton
-              labelVi="Thêm đơn hàng"
-              labelZh="新增"
-              onManualAdd={() => setAddOpen(true)}
-              onExcelAdd={() => setExcelOpen(true)}
-            />
-          </>
-        }
-      />
+      <div className="sticky top-0 z-20 bg-[#F4F7FE] pb-2 space-y-3">
+        <PageHeader
+          vi="Dữ liệu đơn hàng"
+          zh="订单数据"
+          actions={
+            <>
+              <SearchBox value={query} onChange={setQuery} placeholder={t("searchOrderPlaceholder", lang)} />
+              <div className="flex items-center gap-1 border border-line bg-white px-2 py-1 rounded-xs">
+                <button
+                  type="button"
+                  className="p-1 hover:text-[#2051A3] disabled:opacity-40 disabled:hover:text-inherit"
+                  disabled={!canUndo}
+                  onClick={undo}
+                  title={t("undo", lang)}
+                >
+                  <Undo2 size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="p-1 hover:text-[#2051A3] disabled:opacity-40 disabled:hover:text-inherit"
+                  disabled={!canRedo}
+                  onClick={redo}
+                  title={t("redo", lang)}
+                >
+                  <Redo2 size={16} />
+                </button>
+              </div>
+              <AddActionButton
+                labelVi="Thêm đơn hàng"
+                labelZh="新增订单"
+                labelEn="Add Order"
+                onManualAdd={() => setAddOpen(true)}
+                onExcelAdd={() => setExcelOpen(true)}
+              />
+            </>
+          }
+        />
 
-      <Segmented
-        value={tab}
-        onChange={setTab}
-        items={[
-          { key: "open", label: `Đang sản xuất / 生产中 (${orders.filter((o) => !o.completed).length})` },
-          { key: "done", label: `Đã hoàn thiện / 已完成 (${orders.filter((o) => o.completed).length})` },
-        ]}
-      />
+        <Segmented
+          value={tab}
+          onChange={setTab}
+          items={[
+            { key: "open", label: `${lang === "zh" ? "生产中" : lang === "en" ? "In Production" : "Đang sản xuất"} (${orders.filter((o) => !o.completed).length})` },
+            { key: "done", label: `${lang === "zh" ? "已完成" : lang === "en" ? "Completed" : "Đã hoàn thiện"} (${orders.filter((o) => o.completed).length})` },
+          ]}
+        />
+      </div>
 
       <div className={`${card} overflow-hidden bg-white`}>
-        <div className="overflow-x-auto">
-          <table className="w-full table-fixed text-sm">
+        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-270px)]">
+          <table className="w-full table-fixed text-sm border-separate border-spacing-0">
             <colgroup>
               <col className="w-[6%]" />
               <col className="w-[18%]" />
@@ -266,14 +270,15 @@ export function OrdersPage() {
               <col className="w-[16%]" />
               <col className="w-[10%]" />
             </colgroup>
-            <thead className="pe-thead text-sm">
+            <thead className="pe-thead text-sm sticky top-0 z-10 bg-[#F8FAFC] shadow-xs">
               <tr className="h-10">
-                <th className="px-3 py-2 text-center align-middle font-semibold text-ink text-sm whitespace-nowrap">
-                  STT
+                <th className="px-3 py-2 text-center align-middle font-semibold text-ink text-sm whitespace-nowrap bg-[#F8FAFC]">
+                  {t("stt", lang)}
                 </th>
                 <SortableTh
                   labelVi="Mã đơn hàng"
                   labelZh="订单编号"
+                  labelEn="Order Code"
                   colKey="orderCode"
                   sortConfig={sortConfig}
                   onSort={handleSort}
@@ -284,6 +289,7 @@ export function OrdersPage() {
                 <SortableTh
                   labelVi="Khuôn"
                   labelZh="模具"
+                  labelEn="Mold"
                   colKey="moldId"
                   sortConfig={sortConfig}
                   onSort={handleSort}
@@ -295,6 +301,7 @@ export function OrdersPage() {
                 <SortableTh
                   labelVi="Size"
                   labelZh="尺寸"
+                  labelEn="Size"
                   colKey="size"
                   sortConfig={sortConfig}
                   onSort={handleSort}
@@ -305,6 +312,7 @@ export function OrdersPage() {
                 <SortableTh
                   labelVi="Tên cuộn màng"
                   labelZh="卷膜名称"
+                  labelEn="Film Roll"
                   colKey="filmRollName"
                   sortConfig={sortConfig}
                   onSort={handleSort}
@@ -312,11 +320,11 @@ export function OrdersPage() {
                   onFilterChange={handleFilterChange}
                   data={tabOrders}
                 />
-                <th className="px-3 py-2 text-left align-middle font-semibold text-ink text-sm whitespace-nowrap">
-                  Trạng thái / 状态
+                <th className="px-3 py-2 text-left align-middle font-semibold text-ink text-sm whitespace-nowrap bg-[#F8FAFC]">
+                  {t("status", lang)}
                 </th>
-                <th className="px-3 py-2 text-right align-middle font-semibold text-ink text-sm whitespace-nowrap">
-                  Thao tác / 操作
+                <th className="px-3 py-2 text-right align-middle font-semibold text-ink text-sm whitespace-nowrap bg-[#F8FAFC]">
+                  {t("actions", lang)}
                 </th>
               </tr>
             </thead>

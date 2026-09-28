@@ -1,3 +1,4 @@
+import { useApp } from "../../context/AppContext";
 import { card } from "../../lib/styles";
 
 export function ReportCard({ title, subtitle, children, index = 0 }) {
@@ -12,11 +13,13 @@ export function ReportCard({ title, subtitle, children, index = 0 }) {
   );
 }
 
-/* bilingual table header cell: vi on top, zh below */
-export function Th({ vi, zh, right }) {
+/* clean single-language table header cell */
+export function Th({ vi, zh, en, right }) {
+  const { lang = "vi" } = useApp() || {};
+  const label = lang === "zh" ? (zh || vi) : lang === "en" ? (en || vi) : vi;
   return (
-    <th className={`px-2 py-1.5 ${right ? "text-right" : "text-left"}`}>
-      <span className={`flex flex-col leading-tight ${right ? "items-end" : ""}`}><span>{vi}</span><span className="text-xs font-medium" style={{ opacity: 0.75 }}>{zh}</span></span>
+    <th className={`px-2 py-2 font-semibold text-ink ${right ? "text-right" : "text-left"}`}>
+      <span>{label}</span>
     </th>
   );
 }

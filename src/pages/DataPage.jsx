@@ -7,19 +7,20 @@ import { PageHeader } from "../components/ui/PageHeader";
 import { useApp } from "../context/AppContext";
 import { TODAY_KEY } from "../lib/dates";
 import { exportWorkbook } from "../lib/excel";
+import { t } from "../lib/i18n";
 import { btnPrimary, card } from "../lib/styles";
 
 export function DataPage() {
-  const { db, setDb, pushToast, role, confirmAction } = useApp();
+  const { db, setDb, pushToast, role, confirmAction, lang = "vi" } = useApp();
   const scheduleDates = useMemo(() => Object.keys(db.schedules).filter((k) => db.schedules[k]).sort(), [db.schedules]);
   const [range, setRange] = useState(() => ({ from: scheduleDates[0] || TODAY_KEY, to: scheduleDates[scheduleDates.length - 1] || TODAY_KEY }));
 
   const handleExport = () => {
     try {
       exportWorkbook(db, range.from, range.to);
-      pushToast("Đã tải xuống file Excel / 已下载 Excel 文件", "success");
+      pushToast(lang === "zh" ? "已下载 Excel 文件" : lang === "en" ? "Excel file downloaded" : "Đã tải xuống file Excel", "success");
     } catch (err) {
-      pushToast("Không thể tạo file Excel / 无法生成 Excel 文件", "error");
+      pushToast(lang === "zh" ? "无法生成 Excel 文件" : lang === "en" ? "Cannot generate Excel file" : "Không thể tạo file Excel", "error");
     }
   };
 
@@ -32,17 +33,23 @@ export function DataPage() {
             <div className="v-stat-icon bg-canvas text-brand">
               <Download size={24} />
             </div>
-            <Bi vi="Xuất dữ liệu ra Excel" zh="导出数据为 Excel" viClass="text-lg font-bold text-ink" zhClass="text-sm font-medium text-mute" />
+            <Bi vi="Xuất dữ liệu ra Excel" zh="导出数据为 Excel" en="Export Data to Excel" viClass="text-lg font-bold text-ink" />
           </div>
-          <p className="mb-3 text-sm text-mute">File Excel gồm 4 sheet: <strong>Khuôn máy, Đơn hàng, Nhân sự, Kế hoạch</strong> (sheet Kế hoạch theo khoảng ngày chọn bên dưới).</p>
+          <p className="mb-3 text-sm text-mute">
+            {lang === "zh"
+              ? "Excel 文件包含 4 个工作表：模具数据、订单数据、人员管理、排单计划。"
+              : lang === "en"
+              ? "Excel workbook includes 4 sheets: Molds, Orders, Personnel, Schedule."
+              : "File Excel gồm 4 sheet: Khuôn máy, Đơn hàng, Nhân sự, Kế hoạch."}
+          </p>
           <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-sm text-mute">Từ / 从</span>
+            <span className="text-sm text-mute">{t("from", lang)}</span>
             <DateFieldVN value={range.from} onChange={(v) => setRange({ ...range, from: v })} />
-            <span className="text-sm text-mute">Đến / 到</span>
+            <span className="text-sm text-mute">{t("to", lang)}</span>
             <DateFieldVN value={range.to} onChange={(v) => setRange({ ...range, to: v })} />
           </div>
           <button className={btnPrimary} onClick={handleExport}>
-            <Download size={14} /> Tải xuống Excel / 下载 Excel
+            <Download size={14} /> {t("downloadExcel", lang)}
           </button>
         </div>
       </div>

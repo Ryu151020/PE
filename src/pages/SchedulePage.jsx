@@ -12,13 +12,15 @@ import { Modal } from "../components/ui/Overlays";
 import { useApp } from "../context/AppContext";
 import { PLAN_STATUS, POSITIONS, isActive } from "../lib/constants";
 import { TODAY_KEY, toDisplay } from "../lib/dates";
-import { byId, computeKpis, copySchedule, createHistoryStack, emptyDay, withMachineStatus } from "../lib/schedule";
+import { byId, computeKpis, copySchedule, createHistoryStack, emptyDay, sanitizeDay, withMachineStatus } from "../lib/schedule";
 import { btnGhost, btnPrimary, btnSecondary, card } from "../lib/styles";
+import { t } from "../lib/i18n";
 
 export function SchedulePage() {
-  const { db, setDb, role, pushToast, confirmAction } = useApp();
+  const { db, setDb, role, user, pushToast, confirmAction, lang = "vi" } = useApp();
   const [dateKey, setDateKey] = useState(TODAY_KEY);
-  const [dayData, setDayDataLocal] = useState(db.schedules[TODAY_KEY] || null);
+  const machines = db.machines || [];
+  const [dayData, setDayDataLocal] = useState(() => sanitizeDay(db.schedules?.[TODAY_KEY], machines));
   const [editable, setEditable] = useState(false);
   const [copyModalOpen, setCopyModalOpen] = useState(false);
   const [leaveGuardOpen, setLeaveGuardOpen] = useState(false);
@@ -26,7 +28,7 @@ export function SchedulePage() {
   const historyRef = useRef(null);
   const initialRef = useRef(null);
 
-  const employees = db.employees, machines = db.machines, molds = db.molds, orders = db.orders;
+  const employees = db.employees || [], molds = db.molds || [], orders = db.orders || [];
   const ordersById = useMemo(() => byId(orders), [orders]);
   const moldsById = useMemo(() => byId(molds), [molds]);
   const employeesById = useMemo(() => byId(employees), [employees]);
@@ -35,15 +37,15 @@ export function SchedulePage() {
   const supportPool = useMemo(() => employees.filter((e) => isActive(e) && e.position === POSITIONS.SUPPORT), [employees]);
 
   useEffect(() => {
-    const existing = db.schedules[dateKey] || null;
+    const existing = sanitizeDay(db.schedules?.[dateKey], machines);
     setDayDataLocal(existing);
     setEditable(false);
     historyRef.current = createHistoryStack(existing);
     initialRef.current = existing;
-  }, [dateKey]);
+  }, [dateKey, machines, db.schedules]);
 
   // Keep the read-only view in sync with the stored day (e.g. after someone else saved it). While editing, the local draft is never overwritten.
-  const stored = db.schedules[dateKey] || null;
+  const stored = useMemo(() => sanitizeDay(db.schedules?.[dateKey], machines), [db.schedules, dateKey, machines]);
   useEffect(() => {
     if (editable) return;
     setDayDataLocal(stored); initialRef.current = stored; historyRef.current = createHistoryStack(stored);
@@ -82,22 +84,26 @@ export function SchedulePage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [editable]);
 
+  const userName = (typeof user === "object" && (user?.name || user?.username)) || user || "Admin";
+
   const handleStartNew = () => { const fresh = emptyDay(dateKey, machines); setDayDataLocal(fresh); historyRef.current = createHistoryStack(fresh); setEditable(true); };
   const handleEnterEdit = () => { initialRef.current = dayData; setEditable(true); };
   const handleSave = () => {
     // freeze each machine's status into this day so it can never change when another date is edited
-    const saved = { ...withMachineStatus(dayData, machines), status: PLAN_STATUS.SAVED, updatedBy: "Nguyễn Văn A", updatedAt: new Date().toISOString() };
+    const saved = { ...withMachineStatus(dayData, machines), status: PLAN_STATUS.SAVED, updatedBy: userName, updatedAt: new Date().toISOString() };
     setDb((prev) => ({ ...prev, schedules: { ...prev.schedules, [dateKey]: saved } }));
     setDayDataLocal(saved); initialRef.current = saved; setEditable(false);
-    pushToast(`Đã lưu kế hoạch ngày ${toDisplay(dateKey)} / 已保存`, "success");
+    pushToast(lang === "zh" ? `已保存 ${toDisplay(dateKey)} 排班计划` : lang === "en" ? `Schedule for ${toDisplay(dateKey)} saved` : `Đã lưu kế hoạch ngày ${toDisplay(dateKey)}`, "success");
   };
   const handleToggleLock = () => {
     if (!dayData) return;
     const nextStatus = dayData.status === PLAN_STATUS.LOCKED ? PLAN_STATUS.SAVED : PLAN_STATUS.LOCKED;
-    const updated = { ...dayData, status: nextStatus };
+    const updated = { ...dayData, status: nextStatus, updatedAt: new Date().toISOString() };
     setDb((prev) => ({ ...prev, schedules: { ...prev.schedules, [dateKey]: updated } }));
     setDayDataLocal(updated); initialRef.current = updated;
-    pushToast(nextStatus === PLAN_STATUS.LOCKED ? "Đã khóa kế hoạch / 已锁定" : "Đã mở khóa / 已解锁", "info");
+    pushToast(nextStatus === PLAN_STATUS.LOCKED
+      ? (lang === "zh" ? "已锁定排班计划" : lang === "en" ? "Schedule locked" : "Đã khóa kế hoạch")
+      : (lang === "zh" ? "已解锁排班计划" : lang === "en" ? "Schedule unlocked" : "Đã mở khóa kế hoạch"), "info");
   };
   const requestDateChange = (nextKey) => { if (isDirty) { setPendingDate(nextKey); setLeaveGuardOpen(true); } else setDateKey(nextKey); };
   const confirmLeaveWithSave = () => { handleSave(); setLeaveGuardOpen(false); if (pendingDate) setDateKey(pendingDate); };
@@ -113,7 +119,7 @@ export function SchedulePage() {
             <SquareDatePicker selectedKey={dateKey} onSelect={requestDateChange} />
             {dayData && dayData.updatedAt && (
               <div className="leading-tight">
-                <div className="text-xs font-medium text-mute">Thời gian cập nhật / 更新时间</div>
+                <div className="text-xs font-medium text-mute">{t("lastUpdated", lang)}</div>
                 <div className="mt-0.5 text-sm font-bold text-ink">{new Date(dayData.updatedAt).toLocaleString("vi-VN")}</div>
               </div>
             )}
@@ -128,10 +134,22 @@ export function SchedulePage() {
       {!dayData ? (
         <div className={`${card} flex flex-col items-center justify-center gap-3 py-16 text-center`}>
           <FileX2 size={36} className="text-faint" />
-          <Bi vi={`Chưa có kế hoạch cho ngày ${toDisplay(dateKey)}`} zh="该日期暂无排班计划" center viClass="text-body font-medium" />
+          <Bi
+            vi={`Chưa có kế hoạch cho ngày ${toDisplay(dateKey)}`}
+            zh={`该日期暂无排班计划: ${toDisplay(dateKey)}`}
+            en={`No schedule planned for ${toDisplay(dateKey)}`}
+            center
+            viClass="text-body font-medium"
+          />
           <div className="flex gap-2">
-            <button className={btnSecondary} onClick={() => setCopyModalOpen(true)}><RefreshCw size={14} /> Lấy dữ liệu từ ngày khác</button>
-            {role !== "VIEWER" && <button className={btnPrimary} onClick={handleStartNew}><PlusCircle size={14} /> Tạo kế hoạch mới</button>}
+            <button className={btnSecondary} onClick={() => setCopyModalOpen(true)}>
+              <RefreshCw size={14} /> {t("getDataFromOtherDate", lang)}
+            </button>
+            {role !== "VIEWER" && (
+              <button className={btnPrimary} onClick={handleStartNew}>
+                <PlusCircle size={14} /> {t("createNewPlan", lang)}
+              </button>
+            )}
           </div>
         </div>
       ) : (

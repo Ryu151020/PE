@@ -33,14 +33,52 @@ export function emptyDay(dateKey, machines) {
   return { date: dateKey, entries, dayLeader: null, dayTeamLeaders: [], nightLeader: null, nightTeamLeaders: [], status: PLAN_STATUS.DRAFT, updatedBy: null, updatedAt: null };
 }
 
+export function sanitizeDay(day, machines) {
+  if (!day) return null;
+  const machList = machines || [];
+  const base = emptyDay(day.date, machList);
+  const entries = { ...base.entries };
+  if (day.entries) {
+    machList.forEach((m) => {
+      const e = day.entries[m.id];
+      if (e) {
+        entries[m.id] = {
+          ...emptyEntryFor(m),
+          ...e,
+          dayShift: {
+            ...emptyEntryFor(m).dayShift,
+            ...(e.dayShift || {}),
+            workers: Array.isArray(e.dayShift?.workers) ? e.dayShift.workers : [],
+            technicians: Array.isArray(e.dayShift?.technicians) ? e.dayShift.technicians : [],
+            otherWorkers: Array.isArray(e.dayShift?.otherWorkers) ? e.dayShift.otherWorkers : [],
+          },
+          nightShift: {
+            ...emptyEntryFor(m).nightShift,
+            ...(e.nightShift || {}),
+            workers: Array.isArray(e.nightShift?.workers) ? e.nightShift.workers : [],
+            technicians: Array.isArray(e.nightShift?.technicians) ? e.nightShift.technicians : [],
+            otherWorkers: Array.isArray(e.nightShift?.otherWorkers) ? e.nightShift.otherWorkers : [],
+          },
+        };
+      }
+    });
+  }
+  return {
+    ...base,
+    ...day,
+    entries,
+  };
+}
+
 export function computeKpis(day, machines, employees) {
-  const total = machines.length;
+  const total = (machines || []).length;
   const totalSlots = total * 2; // day slots + night slots (e.g. 41 + 41 = 82)
+  const entries = day?.entries || {};
   // A machine only counts as "open" for a shift when its status is OPEN AND that shift actually has a worker assigned.
-  const dayRunning = day ? machines.filter((m) => day.entries[m.id]?.dayShift.workers.length > 0).length : 0;
-  const nightRunning = day ? machines.filter((m) => day.entries[m.id]?.nightShift.workers.length > 0).length : 0;
-  const openDay = day ? machines.filter((m) => entryMachineStatus(day.entries[m.id], m) === MACHINE_STATUS.OPEN && day.entries[m.id]?.dayShift.workers.length > 0).length : 0;
-  const openNight = day ? machines.filter((m) => entryMachineStatus(day.entries[m.id], m) === MACHINE_STATUS.OPEN && day.entries[m.id]?.nightShift.workers.length > 0).length : 0;
+  const dayRunning = day ? (machines || []).filter((m) => (entries[m.id]?.dayShift?.workers?.length || 0) > 0).length : 0;
+  const nightRunning = day ? (machines || []).filter((m) => (entries[m.id]?.nightShift?.workers?.length || 0) > 0).length : 0;
+  const openDay = day ? (machines || []).filter((m) => entryMachineStatus(entries[m.id], m) === MACHINE_STATUS.OPEN && (entries[m.id]?.dayShift?.workers?.length || 0) > 0).length : 0;
+  const openNight = day ? (machines || []).filter((m) => entryMachineStatus(entries[m.id], m) === MACHINE_STATUS.OPEN && (entries[m.id]?.nightShift?.workers?.length || 0) > 0).length : 0;
   // A machine counts as "stopped" for a shift whenever that shift has no worker assigned, regardless of the status column.
   const stoppedDay = total - dayRunning;
   const stoppedNight = total - nightRunning;
@@ -50,10 +88,11 @@ export function computeKpis(day, machines, employees) {
   const totalActiveEmployees = employees ? employees.filter((e) => isActive(e)).length : 0;
   const employeesById = byId(employees || []);
   const dayIds = new Set(), nightIds = new Set();
-  if (day) {
+  if (day && day.entries) {
     Object.values(day.entries).forEach((entry) => {
-      [...entry.dayShift.workers, ...entry.dayShift.technicians, ...entry.dayShift.otherWorkers].forEach((id) => dayIds.add(id));
-      [...entry.nightShift.workers, ...entry.nightShift.technicians, ...entry.nightShift.otherWorkers].forEach((id) => nightIds.add(id));
+      if (!entry) return;
+      [...(entry.dayShift?.workers || []), ...(entry.dayShift?.technicians || []), ...(entry.dayShift?.otherWorkers || [])].forEach((id) => dayIds.add(id));
+      [...(entry.nightShift?.workers || []), ...(entry.nightShift?.technicians || []), ...(entry.nightShift?.otherWorkers || [])].forEach((id) => nightIds.add(id));
     });
     if (day.dayLeader) dayIds.add(day.dayLeader);
     (day.dayTeamLeaders || []).forEach((id) => dayIds.add(id));

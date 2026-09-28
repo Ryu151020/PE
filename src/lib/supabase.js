@@ -182,11 +182,12 @@ export async function fetchFullDatabase() {
   };
 }
 
-export async function syncTableToSupabase(tableName, rows) {
+export async function syncTableToSupabase(tableName, rows, onConflict) {
   if (!supabase) return { ok: false, error: "Supabase not configured" };
 
   try {
-    const { error } = await supabase.from(tableName).upsert(rows, { onConflict: "id" });
+    const conflictCol = onConflict || (tableName === "schedules" ? "date" : "id");
+    const { error } = await supabase.from(tableName).upsert(rows, { onConflict: conflictCol });
     if (error) throw error;
     return { ok: true };
   } catch (err) {
@@ -198,7 +199,8 @@ export async function syncTableToSupabase(tableName, rows) {
 export async function deleteFromSupabase(tableName, id) {
   if (!supabase) return { ok: false };
   try {
-    const { error } = await supabase.from(tableName).delete().eq("id", id);
+    const idCol = tableName === "schedules" ? "date" : "id";
+    const { error } = await supabase.from(tableName).delete().eq(idCol, id);
     if (error) throw error;
     return { ok: true };
   } catch (err) {

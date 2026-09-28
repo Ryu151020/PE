@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, Plus, Search, X } from "lucide-react";
-import { Bi } from "../ui/Bi";
+import { ChevronDown, ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
+import { useApp } from "../../context/AppContext";
 import { POSITIONS } from "../../lib/constants";
+import { t } from "../../lib/i18n";
+import { Bi } from "../ui/Bi";
 
 export function LeaderMiniBar({ leaderId, teamLeaderIds, employeesById, shiftLeaders, teamLeaders, editable, onChangeLeader, onChangeTeamLeaders, colorClass }) {
+  const { lang = "vi" } = useApp() || {};
   const [leaderOpen, setLeaderOpen] = useState(false);
   const [leaderSearch, setLeaderSearch] = useState("");
   const [teamOpen, setTeamOpen] = useState(false);
@@ -39,7 +42,7 @@ export function LeaderMiniBar({ leaderId, teamLeaderIds, employeesById, shiftLea
   return (
     <div className={`flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-1 py-1 text-sm ${colorClass}`}>
       <span ref={leaderRef} className="relative flex items-center gap-1">
-        <span className="opacity-70 text-xs font-semibold">CT/班长:</span>
+        <span className="opacity-70 text-xs font-semibold">{t("shiftLeaderShort", lang)}:</span>
         {editable ? (
           <>
             <button
@@ -59,7 +62,7 @@ export function LeaderMiniBar({ leaderId, teamLeaderIds, employeesById, shiftLea
                     type="text"
                     value={leaderSearch}
                     onChange={(e) => setLeaderSearch(e.target.value)}
-                    placeholder="Tìm tên... / 搜索..."
+                    placeholder={t("searchLeader", lang)}
                     className="w-full text-sm outline-none bg-transparent"
                   />
                 </div>
@@ -69,7 +72,7 @@ export function LeaderMiniBar({ leaderId, teamLeaderIds, employeesById, shiftLea
                     className="w-full text-left px-2 py-1 text-sm text-mute hover:bg-canvas rounded-xs"
                     onClick={() => { onChangeLeader(null); setLeaderOpen(false); }}
                   >
-                    — Bỏ chọn / 清空 —
+                    — {t("clearSelection", lang)} —
                   </button>
                   {filteredShiftLeaders.map((e) => (
                     <button
@@ -82,7 +85,7 @@ export function LeaderMiniBar({ leaderId, teamLeaderIds, employeesById, shiftLea
                     </button>
                   ))}
                   {filteredShiftLeaders.length === 0 && (
-                    <div className="px-2 py-1 text-xs text-mute">Không tìm thấy / 无结果</div>
+                    <div className="px-2 py-1 text-xs text-mute">{t("notFound", lang)}</div>
                   )}
                 </div>
               </div>
@@ -94,7 +97,7 @@ export function LeaderMiniBar({ leaderId, teamLeaderIds, employeesById, shiftLea
       </span>
 
       <span ref={teamRef} className="relative flex items-center gap-1">
-        <span className="opacity-70 text-xs font-semibold">TT/组长:</span>
+        <span className="opacity-70 text-xs font-semibold">{t("teamLeaderShort", lang)}:</span>
         {editable ? (
           <button
             type="button"
@@ -102,7 +105,7 @@ export function LeaderMiniBar({ leaderId, teamLeaderIds, employeesById, shiftLea
             onClick={() => setTeamOpen((v) => !v)}
           >
             <span className="truncate">
-              {teamNames.length ? teamNames.join(", ") : "— chọn —"}
+              {teamNames.length ? teamNames.join(", ") : t("selectPlaceholder", lang)}
             </span>
             <ChevronDown size={12} className="opacity-70 shrink-0" />
           </button>
@@ -118,7 +121,7 @@ export function LeaderMiniBar({ leaderId, teamLeaderIds, employeesById, shiftLea
                 type="text"
                 value={teamSearch}
                 onChange={(e) => setTeamSearch(e.target.value)}
-                placeholder="Tìm tên tổ trưởng... / 搜索..."
+                placeholder={t("searchTeamLeader", lang)}
                 className="w-full text-sm outline-none bg-transparent"
               />
             </div>
@@ -140,7 +143,7 @@ export function LeaderMiniBar({ leaderId, teamLeaderIds, employeesById, shiftLea
                 </label>
               ))}
               {filteredTeamLeaders.length === 0 && (
-                <div className="px-2 py-1 text-xs text-mute">Không tìm thấy / 无结果</div>
+                <div className="px-2 py-1 text-xs text-mute">{t("notFound", lang)}</div>
               )}
             </div>
           </div>
@@ -151,44 +154,60 @@ export function LeaderMiniBar({ leaderId, teamLeaderIds, employeesById, shiftLea
 }
 
 export function ShiftHeader({ dayData, employees, employeesById, editable, onChangeLeaders, dayCollapsed, nightCollapsed, onToggleDay, onToggleNight }) {
+  const { lang = "vi" } = useApp() || {};
   const shiftLeaders = employees.filter((e) => e.position === POSITIONS.SHIFT_LEADER);
   const teamLeaders = employees.filter((e) => e.position === POSITIONS.TEAM_LEADER);
   const L0 = 0, L1 = 56, L2 = 176, W0 = 56, W1 = 120, W2 = 140; // sticky left offsets: STT | Trạng thái | Khuôn
+
   return (
     <thead className="sticky top-0 z-20">
       <tr className="text-xs">
-        <th rowSpan={3} className="z-30 pe-th border-b border-r border-line px-3 py-3 font-bold" style={{ position: "sticky", left: L0, width: W0, minWidth: W0, maxWidth: W0 }}><Bi vi="STT" zh="序号" center /></th>
-        <th rowSpan={3} className="z-30 pe-th border-b border-r border-line px-3 py-3 font-bold text-left" style={{ position: "sticky", left: L1, width: W1, minWidth: W1, maxWidth: W1 }}><Bi vi="Trạng thái máy" zh="机器状态" /></th>
-        <th rowSpan={3} className="z-30 pe-th border-b border-r border-line px-3 py-3 font-bold text-left" style={{ position: "sticky", left: L2, width: W2, minWidth: W2, maxWidth: W2, boxShadow: "8px 0 8px -8px rgba(112,144,176,0.28)" }}><Bi vi="Khuôn máy" zh="模具" /></th>
-        <th rowSpan={3} className="pe-th border-b border-r border-line px-3 py-3 font-bold text-left" style={{ minWidth: 120 }}><Bi vi="Đơn hàng" zh="订单" /></th>
-        <th rowSpan={3} className="pe-th border-b border-r border-line px-3 py-3 font-bold text-left" style={{ minWidth: 110 }}><Bi vi="Cuộn màng" zh="卷膜" /></th>
+        <th rowSpan={3} className="z-30 pe-th border-b border-r border-line px-3 py-3 font-bold" style={{ position: "sticky", left: L0, width: W0, minWidth: W0, maxWidth: W0 }}>
+          <Bi vi="STT" zh="序号" en="No." center />
+        </th>
+        <th rowSpan={3} className="z-30 pe-th border-b border-r border-line px-3 py-3 font-bold text-left" style={{ position: "sticky", left: L1, width: W1, minWidth: W1, maxWidth: W1 }}>
+          <Bi vi="Trạng thái máy" zh="机器状态" en="Machine Status" />
+        </th>
+        <th rowSpan={3} className="z-30 pe-th border-b border-r border-line px-3 py-3 font-bold text-left" style={{ position: "sticky", left: L2, width: W2, minWidth: W2, maxWidth: W2, boxShadow: "8px 0 8px -8px rgba(112,144,176,0.28)" }}>
+          <Bi vi="Khuôn máy" zh="模具" en="Mold" />
+        </th>
+        <th rowSpan={3} className="pe-th border-b border-r border-line px-3 py-3 font-bold text-left" style={{ minWidth: 120 }}>
+          <Bi vi="Đơn hàng" zh="订单" en="Order" />
+        </th>
+        <th rowSpan={3} className="pe-th border-b border-r border-line px-3 py-3 font-bold text-left" style={{ minWidth: 110 }}>
+          <Bi vi="Cuộn màng" zh="卷膜" en="Film Roll" />
+        </th>
         {dayCollapsed ? (
-          <th rowSpan={3} className="bg-day-head text-warn border-b border-r border-day p-0 text-center cursor-pointer hover:bg-day-head-hover" style={{ width: 26, minWidth: 26 }} onClick={onToggleDay} title="Mở rộng ca ngày / 展开白班">
+          <th rowSpan={3} className="bg-day-head text-warn border-b border-r border-day p-0 text-center cursor-pointer hover:bg-day-head-hover" style={{ width: 26, minWidth: 26 }} onClick={onToggleDay} title={t("expandDayShift", lang)}>
             <div className="flex h-full flex-col items-center justify-center gap-1 py-2">
               <Plus size={11} />
-              <span className="font-bold" style={{ writingMode: "vertical-rl" }}>Ca ngày</span>
+              <span className="font-bold" style={{ writingMode: "vertical-rl" }}>{t("dayShift", lang)}</span>
             </div>
           </th>
         ) : (
           <th colSpan={4} className="bg-day-head text-warn border-b border-r border-day p-0 text-center">
             <div className="flex items-center justify-center gap-1.5 py-1">
-              <Bi vi="CA NGÀY" zh="白班" center viClass="font-bold text-xs" />
-              <button className="rad-6 px-1 text-warn hover:bg-day-head-hover" onClick={onToggleDay} title="Thu gọn ca ngày / 收起白班"><ChevronLeft size={13} /></button>
+              <Bi vi="CA NGÀY" zh="白班" en="DAY SHIFT" center viClass="font-bold text-xs" />
+              <button className="rad-6 px-1 text-warn hover:bg-day-head-hover" onClick={onToggleDay} title={t("collapseDayShift", lang)}>
+                <ChevronLeft size={13} />
+              </button>
             </div>
           </th>
         )}
         {nightCollapsed ? (
-          <th rowSpan={3} className="bg-night-head text-white border-b border-night-head p-0 text-center cursor-pointer hover:bg-night-head-hover" style={{ width: 26, minWidth: 26 }} onClick={onToggleNight} title="Mở rộng ca đêm / 展开夜班">
+          <th rowSpan={3} className="bg-night-head text-white border-b border-night-head p-0 text-center cursor-pointer hover:bg-night-head-hover" style={{ width: 26, minWidth: 26 }} onClick={onToggleNight} title={t("expandNightShift", lang)}>
             <div className="flex h-full flex-col items-center justify-center gap-1 py-2">
               <Plus size={11} />
-              <span className="font-bold" style={{ writingMode: "vertical-rl" }}>Ca đêm</span>
+              <span className="font-bold" style={{ writingMode: "vertical-rl" }}>{t("nightShift", lang)}</span>
             </div>
           </th>
         ) : (
           <th colSpan={4} className="bg-night-head text-white border-b border-night-head p-0 text-center">
             <div className="flex items-center justify-center gap-1.5 py-1">
-              <button className="rad-6 px-1 text-night-soft hover:bg-night-head-hover" onClick={onToggleNight} title="Thu gọn ca đêm / 收起夜班"><ChevronRight size={13} /></button>
-              <Bi vi="CA ĐÊM" zh="夜班" center viClass="font-bold text-xs" />
+              <button className="rad-6 px-1 text-night-soft hover:bg-night-head-hover" onClick={onToggleNight} title={t("collapseNightShift", lang)}>
+                <ChevronRight size={13} />
+              </button>
+              <Bi vi="CA ĐÊM" zh="夜班" en="NIGHT SHIFT" center viClass="font-bold text-xs" />
             </div>
           </th>
         )}
@@ -209,16 +228,32 @@ export function ShiftHeader({ dayData, employees, employeesById, editable, onCha
       </tr>
       <tr className="text-xs">
         {!dayCollapsed && (<>
-          <th className="bg-day-soft border-b border-r border-day px-2 py-1.5 text-warn font-bold text-left" style={{ minWidth: 210 }}><Bi vi="Công nhân" zh="工人" /></th>
-          <th className="bg-day-soft border-b border-r border-day px-2 py-1.5 text-warn font-bold text-left" style={{ minWidth: 70 }}><Bi vi="Tăng ca" zh="加班" /></th>
-          <th className="bg-day-soft border-b border-r border-day px-2 py-1.5 text-warn font-bold text-left" style={{ minWidth: 110 }}><Bi vi="Kỹ thuật viên" zh="技术员" /></th>
-          <th className="bg-day-soft border-b border-r border-day px-2 py-1.5 text-warn font-bold text-left" style={{ minWidth: 110 }}><Bi vi="Công nhân khác" zh="其他工人" /></th>
+          <th className="bg-day-soft border-b border-r border-day px-2 py-1.5 text-warn font-bold text-left" style={{ minWidth: 210 }}>
+            <Bi vi="Công nhân" zh="工人" en="Workers" />
+          </th>
+          <th className="bg-day-soft border-b border-r border-day px-2 py-1.5 text-warn font-bold text-left" style={{ minWidth: 70 }}>
+            <Bi vi="Tăng ca" zh="加班" en="Overtime" />
+          </th>
+          <th className="bg-day-soft border-b border-r border-day px-2 py-1.5 text-warn font-bold text-left" style={{ minWidth: 110 }}>
+            <Bi vi="Kỹ thuật viên" zh="技术员" en="Technicians" />
+          </th>
+          <th className="bg-day-soft border-b border-r border-day px-2 py-1.5 text-warn font-bold text-left" style={{ minWidth: 110 }}>
+            <Bi vi="Công nhân khác" zh="其他工人" en="Support Staff" />
+          </th>
         </>)}
         {!nightCollapsed && (<>
-          <th className="bg-night-tint border-b border-r border-night px-2 py-1.5 text-night font-bold text-left" style={{ minWidth: 210 }}><Bi vi="Công nhân" zh="工人" /></th>
-          <th className="bg-night-tint border-b border-r border-night px-2 py-1.5 text-night font-bold text-left" style={{ minWidth: 70 }}><Bi vi="Tăng ca" zh="加班" /></th>
-          <th className="bg-night-tint border-b border-r border-night px-2 py-1.5 text-night font-bold text-left" style={{ minWidth: 110 }}><Bi vi="Kỹ thuật viên" zh="技术员" /></th>
-          <th className="bg-night-tint border-b border-night px-2 py-1.5 text-night font-bold text-left" style={{ minWidth: 110 }}><Bi vi="Công nhân khác" zh="其他工人" /></th>
+          <th className="bg-night-tint border-b border-r border-night px-2 py-1.5 text-night font-bold text-left" style={{ minWidth: 210 }}>
+            <Bi vi="Công nhân" zh="工人" en="Workers" />
+          </th>
+          <th className="bg-night-tint border-b border-r border-night px-2 py-1.5 text-night font-bold text-left" style={{ minWidth: 70 }}>
+            <Bi vi="Tăng ca" zh="加班" en="Overtime" />
+          </th>
+          <th className="bg-night-tint border-b border-r border-night px-2 py-1.5 text-night font-bold text-left" style={{ minWidth: 110 }}>
+            <Bi vi="Kỹ thuật viên" zh="技术员" en="Technicians" />
+          </th>
+          <th className="bg-night-tint border-b border-night px-2 py-1.5 text-night font-bold text-left" style={{ minWidth: 110 }}>
+            <Bi vi="Công nhân khác" zh="其他工人" en="Support Staff" />
+          </th>
         </>)}
       </tr>
     </thead>
