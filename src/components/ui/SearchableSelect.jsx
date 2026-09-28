@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown, Search, X } from "lucide-react";
+import { ChevronDown, Plus, Search, X } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { getMoldColor } from "../../lib/constants";
 import { t } from "../../lib/i18n";
@@ -9,11 +9,12 @@ export function SearchableSelect({
   value,
   onChange,
   options = [],
-  placeholder = "—",
+  placeholder = "",
   searchPlaceholder,
   isMold = false,
   className = "",
   disabled = false,
+  cellMode = false,
 }) {
   const { lang = "vi" } = useApp() || {};
   const [open, setOpen] = useState(false);
@@ -130,30 +131,75 @@ export function SearchableSelect({
 
   return (
     <div className={`relative inline-block w-full text-sm ${className}`}>
-      <button
-        ref={triggerRef}
-        type="button"
-        disabled={disabled}
-        onClick={handleOpen}
-        className={`flex w-full items-center justify-between gap-1 border border-line bg-white px-2 py-1 text-left text-sm rounded-xs transition-colors hover:border-[#2051A3] focus:border-[#2051A3] focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-100 ${
-          selectedMoldStyle ? `${selectedMoldStyle.bg} ${selectedMoldStyle.text} font-medium` : "text-ink"
-        }`}
-      >
-        <span className="truncate">
-          {selectedOption ? selectedOption.label : placeholder}
-        </span>
-        <div className="flex shrink-0 items-center gap-1">
-          {value && !disabled && (
-            <span
-              onClick={handleClear}
-              className="text-mute hover:text-bad p-0.5 rounded-xs"
-            >
-              <X size={12} />
-            </span>
+      {cellMode ? (
+        <button
+          ref={triggerRef}
+          type="button"
+          disabled={disabled}
+          onClick={handleOpen}
+          className={`flex w-full min-h-[26px] items-center rounded-xs transition-colors cursor-pointer ${
+            isMold ? "justify-center text-center" : "justify-start text-left px-1"
+          } ${
+            open
+              ? "border border-[#4318FF] ring-2 ring-[#4318FF]/20 bg-[#F4F7FE]"
+              : "border border-transparent hover:border-line hover:bg-canvas/50"
+          }`}
+          title={isMold ? "Bấm để chọn khuôn" : "Bấm để chọn đơn hàng"}
+        >
+          {isMold ? (
+            selectedMoldStyle ? (
+              <span
+                className={`px-2 py-0.5 rounded-xs border text-[13px] font-semibold ${selectedMoldStyle.bg} ${selectedMoldStyle.text} ${selectedMoldStyle.border}`}
+              >
+                {selectedOption.label}
+              </span>
+            ) : !disabled ? (
+              <span className="flex h-[22px] w-[22px] items-center justify-center rounded-xs border border-dashed border-line2 text-mute group-hover:border-brand group-hover:text-brand opacity-0 group-hover:opacity-100 transition-opacity mx-auto">
+                <Plus size={13} />
+              </span>
+            ) : (
+              <span className="inline-block min-h-[22px] w-full" />
+            )
+          ) : (
+            selectedOption ? (
+              <span className="truncate text-[13px] font-bold text-black">
+                {selectedOption.label}
+              </span>
+            ) : !disabled ? (
+              <span className="flex h-[22px] w-[22px] items-center justify-center rounded-xs border border-dashed border-line2 text-mute group-hover:border-brand group-hover:text-brand opacity-0 group-hover:opacity-100 transition-opacity">
+                <Plus size={13} />
+              </span>
+            ) : (
+              <span className="inline-block min-h-[22px] w-full" />
+            )
           )}
-          <ChevronDown size={14} className="text-mute" />
-        </div>
-      </button>
+        </button>
+      ) : (
+        <button
+          ref={triggerRef}
+          type="button"
+          disabled={disabled}
+          onClick={handleOpen}
+          className={`flex w-full items-center justify-between gap-1 border border-line bg-white px-2 py-1 text-left text-sm rounded-xs transition-colors hover:border-[#2051A3] focus:border-[#2051A3] focus:outline-none disabled:cursor-not-allowed disabled:bg-gray-100 ${
+            selectedMoldStyle ? `${selectedMoldStyle.bg} ${selectedMoldStyle.text} font-medium` : "text-ink"
+          }`}
+        >
+          <span className="truncate">
+            {selectedOption ? selectedOption.label : placeholder}
+          </span>
+          <div className="flex shrink-0 items-center gap-1">
+            {value && !disabled && (
+              <span
+                onClick={handleClear}
+                className="text-mute hover:text-bad p-0.5 rounded-xs"
+              >
+                <X size={12} />
+              </span>
+            )}
+            <ChevronDown size={14} className="text-mute" />
+          </div>
+        </button>
+      )}
 
       {open &&
         createPortal(
@@ -216,10 +262,9 @@ export function SearchableSelect({
                           : "text-ink hover:bg-canvas"
                       }`}
                     >
-                      <span className="truncate">{opt.label}</span>
-                      {moldColor && (
+                      {moldColor ? (
                         <span
-                          className={`text-xs px-1.5 py-0.5 rounded-xs border font-medium ${
+                          className={`text-xs px-2 py-0.5 rounded-xs border font-medium ${
                             isSelected
                               ? "bg-white/20 text-white border-white/40"
                               : `${moldColor.bg} ${moldColor.text} ${moldColor.border}`
@@ -227,6 +272,8 @@ export function SearchableSelect({
                         >
                           {opt.label}
                         </span>
+                      ) : (
+                        <span className="truncate">{opt.label}</span>
                       )}
                       {opt.sub && (
                         <span className={`text-xs ${isSelected ? "text-white/80" : "text-mute"}`}>

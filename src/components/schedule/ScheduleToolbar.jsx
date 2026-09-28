@@ -1,43 +1,61 @@
-import { Lock, Pencil, Redo2, RefreshCw, Save, Trash2, Undo2, Unlock } from "lucide-react";
-import { StatusBadge } from "../ui/Badges";
+import { Lock, RefreshCw, Trash2, Unlock } from "lucide-react";
+import { UndoRedoButtons } from "../ui/UndoRedoButtons";
 import { useApp } from "../../context/AppContext";
-import { PLAN_STATUS, PLAN_STATUS_COLOR, PLAN_STATUS_DEFS } from "../../lib/constants";
+import { PLAN_STATUS, PLAN_STATUS_DEFS } from "../../lib/constants";
 import { t } from "../../lib/i18n";
-import { btnGhost, btnPrimary, btnSecondary } from "../../lib/styles";
 
-export function ScheduleToolbar({ editable, planStatus, isDirty, canUndo, canRedo, role, onEnterEdit, onSave, onUndo, onRedo, onToggleLock, onGetData, onClearAll }) {
+export function ScheduleToolbar({ editable, planStatus, canUndo, canRedo, role, onUndo, onRedo, onToggleLock, onGetData, onClearAll }) {
   const { lang = "vi" } = useApp() || {};
   const isViewer = role === "VIEWER", isLocked = planStatus === PLAN_STATUS.LOCKED;
-  const st = PLAN_STATUS_DEFS[planStatus] || PLAN_STATUS_DEFS.DRAFT;
+  const st = PLAN_STATUS_DEFS[planStatus] || PLAN_STATUS_DEFS.SAVED;
+
+  const statusStyles = {
+    [PLAN_STATUS.SAVED]: "bg-[#E6FAF5] text-[#05CD99] border-[#05CD99]/25",
+    [PLAN_STATUS.LOCKED]: "bg-[#F4F7FE] text-[#4318FF] border-[#4318FF]/25",
+    [PLAN_STATUS.DRAFT]: "bg-canvas text-mute border-line",
+  };
+  const dotColor = {
+    [PLAN_STATUS.SAVED]: "bg-[#05CD99]",
+    [PLAN_STATUS.LOCKED]: "bg-[#4318FF]",
+    [PLAN_STATUS.DRAFT]: "bg-mute",
+  };
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2">
-      <StatusBadge vi={st.vi} zh={st.zh} className={PLAN_STATUS_COLOR[planStatus] || PLAN_STATUS_COLOR.DRAFT} />
-      {isDirty && <span className="text-xs text-warn font-medium">{t("unsavedWarning", lang)}</span>}
+    <div className="flex flex-wrap items-center justify-end gap-2.5">
+      <div className={`flex items-center gap-1.5 h-10 px-3.5 rounded-full text-xs font-bold border shadow-xs ${statusStyles[planStatus] || statusStyles[PLAN_STATUS.SAVED]}`}>
+        <span className={`w-2 h-2 rounded-full ${dotColor[planStatus] || dotColor[PLAN_STATUS.SAVED]}`} />
+        <span>{lang === "zh" ? st.zh : lang === "en" ? (st.en || st.vi) : st.vi}</span>
+      </div>
+
       <div className="ml-auto flex items-center gap-2">
-        {editable && (<>
-          <div className="flex h-10 items-center gap-1 border border-line bg-white px-2.5 rounded-xl shadow-xs">
-            <button className="p-1.5 rounded-lg text-body hover:text-brand hover:bg-canvas transition-colors disabled:opacity-40 disabled:hover:text-inherit disabled:hover:bg-transparent" disabled={!canUndo} onClick={onUndo} title={t("undo", lang)}><Undo2 size={15} /></button>
-            <button className="p-1.5 rounded-lg text-body hover:text-brand hover:bg-canvas transition-colors disabled:opacity-40 disabled:hover:text-inherit disabled:hover:bg-transparent" disabled={!canRedo} onClick={onRedo} title={t("redo", lang)}><Redo2 size={15} /></button>
-          </div>
-          <button className={`${btnGhost} text-bad`} onClick={onClearAll} disabled={isLocked || isViewer} title={t("clearAll", lang)}>
-            <Trash2 size={15} /> {t("clearAll", lang)}
-          </button>
-        </>)}
-        <button className={btnSecondary} onClick={onGetData} disabled={isLocked || isViewer}>
-          <RefreshCw size={14} /> {t("getData", lang)}
+        {editable && (
+          <>
+            <UndoRedoButtons canUndo={canUndo} canRedo={canRedo} onUndo={onUndo} onRedo={onRedo} />
+            <button
+              className="h-10 px-4 rounded-full bg-[#FFF5F5] hover:bg-[#FFEAE8] text-[#EE5D50] border border-[#EE5D50]/20 font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              onClick={onClearAll}
+              disabled={isLocked || isViewer}
+              title={t("clearAll", lang)}
+            >
+              <Trash2 size={14} />
+              <span>{t("clearAll", lang)}</span>
+            </button>
+          </>
+        )}
+        <button
+          className="h-10 px-4 rounded-full bg-[#F4F7FE] hover:bg-[#E9EDF7] text-[#4318FF] border border-line/70 font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          onClick={onGetData}
+          disabled={isLocked || isViewer}
+        >
+          <RefreshCw size={14} />
+          <span>{t("getData", lang)}</span>
         </button>
-        {!isViewer && !isLocked && (editable ? (
-          <button className={btnPrimary} onClick={onSave}>
-            <Save size={14} /> {t("savePlan", lang)}
-          </button>
-        ) : (
-          <button className={btnSecondary} onClick={onEnterEdit}>
-            <Pencil size={14} /> {t("editPlan", lang)}
-          </button>
-        ))}
         {(role === "ADMIN" || role === "MANAGER") && (
-          <button className={btnGhost} onClick={onToggleLock} title={isLocked ? t("unlockPlan", lang) : t("lockPlan", lang)}>
+          <button
+            className="w-10 h-10 rounded-full bg-white border border-line/80 hover:bg-[#F4F7FE] hover:text-[#4318FF] text-body flex items-center justify-center transition-all shadow-xs cursor-pointer"
+            onClick={onToggleLock}
+            title={isLocked ? t("unlockPlan", lang) : t("lockPlan", lang)}
+          >
             {isLocked ? <Unlock size={15} /> : <Lock size={15} />}
           </button>
         )}

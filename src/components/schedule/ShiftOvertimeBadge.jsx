@@ -1,3 +1,4 @@
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useApp } from "../../context/AppContext";
 import { OT_OPTIONS } from "../../lib/constants";
@@ -8,17 +9,28 @@ import { btnPrimary, inputCls } from "../../lib/styles";
 export function ShiftOvertimeBadge({ hours, workerCount, editable, onChange }) {
   const { lang = "vi" } = useApp() || {};
   const [open, setOpen] = useState(false);
-  if (workerCount === 0) return <span className="text-xs text-faint">—</span>;
+  if (!editable && (!hours || hours === 0)) return null;
 
   return (
-    <span className="relative inline-block">
-      <button
-        disabled={!editable}
-        onClick={() => { setOpen(true); }}
-        className={`rad-8 px-2 py-1 text-xs font-bold ${hours > 0 ? "bg-warn text-ink" : "bg-canvas text-mute"} ${editable ? "hover:bg-warn-deep cursor-pointer" : ""}`}
-      >
-        {hours}h
-      </button>
+    <span className="relative inline-flex items-center justify-center">
+      {hours > 0 ? (
+        <button
+          disabled={!editable}
+          onClick={() => { setOpen(true); }}
+          className={`rad-8 px-2 py-0.5 text-xs font-bold bg-warn text-ink ${editable ? "cursor-pointer hover:brightness-95" : ""}`}
+        >
+          {hours}h
+        </button>
+      ) : editable ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="flex h-[22px] w-[22px] items-center justify-center rounded-xs border border-dashed border-line2 text-mute hover:border-brand hover:text-brand opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer mx-auto"
+          title="Thêm tăng ca"
+        >
+          <Plus size={13} />
+        </button>
+      ) : null}
       {open && (
         <div className="fixed inset-0 z-50" onClick={() => setOpen(false)}>
           <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rad-14 border border-line bg-white p-4 sh-soft" style={{ width: 230 }} onClick={(e) => e.stopPropagation()}>

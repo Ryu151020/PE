@@ -3,9 +3,9 @@
    ============================================================ */
 
 export const LANGUAGES = [
-  { code: "vi", label: "Tiếng Việt", short: "VI", flag: "🇻🇳" },
-  { code: "zh", label: "中文", short: "中文", flag: "🇨🇳" },
-  { code: "en", label: "English", short: "EN", flag: "🇬🇧" },
+  { code: "vi", label: "Tiếng Việt", short: "VN" },
+  { code: "zh", label: "中文", short: "中文" },
+  { code: "en", label: "English", short: "EN" },
 ];
 
 export const DICT = {

@@ -17,6 +17,7 @@ export function SortableTh({
   getDisplayValue,
   className = "",
   style = {},
+  center = false,
 }) {
   const { lang = "vi" } = useApp() || {};
   const [isOpen, setIsOpen] = useState(false);
@@ -172,14 +173,14 @@ export function SortableTh({
   return (
     <th
       ref={thRef}
-      className={`px-3 py-2 text-left align-middle font-semibold text-ink text-sm select-none whitespace-nowrap transition-colors bg-[#F8FAFC] ${
+      className={`px-3 py-2 ${center ? "text-center" : "text-left"} align-middle font-bold text-black text-sm select-none whitespace-nowrap transition-colors bg-[#F8FAFC] border-b border-r border-line ${
         isOpen ? "!bg-[#e8f0fe]" : "hover:bg-[#edf2f7]"
       } ${className}`}
       style={style}
     >
-      <div className="flex items-center justify-between gap-1.5 whitespace-nowrap">
+      <div className={`flex items-center gap-1.5 whitespace-nowrap ${center ? "justify-center" : "justify-between"}`}>
         <div
-          className="flex items-center gap-1 cursor-pointer flex-1 whitespace-nowrap"
+          className={`flex items-center gap-1 cursor-pointer whitespace-nowrap ${center ? "" : "flex-1"}`}
           onClick={handleOpen}
           title={lang === "zh" ? "点击以筛选或排序此列" : lang === "en" ? "Click to filter or sort" : "Bấm để lọc hoặc sắp xếp cột này"}
         >

@@ -27,33 +27,40 @@ export function DataPage() {
   return (
     <div className="space-y-5">
       <PageHeader vi="Dữ liệu" zh="数据管理" />
-      <div className="grid gap-5 grid-cols-1 md:grid-cols-2">
-        <div className={`${card} v-rise v-hover-lift p-6`}>
-          <div className="mb-3 flex items-center gap-4">
-            <div className="v-stat-icon bg-canvas text-brand">
-              <Download size={24} />
+      <div className="grid gap-5 grid-cols-1 lg:grid-cols-2 items-stretch">
+        {/* Card bên trái: Xuất dữ liệu ra Excel */}
+        <div className={`${card} v-rise v-hover-lift p-6 flex flex-col justify-between h-full`} style={{ "--i": 1 }}>
+          <div>
+            <div className="mb-4 flex items-center gap-4">
+              <div className="v-stat-icon bg-canvas text-brand">
+                <Download size={24} />
+              </div>
+              <Bi vi="Xuất dữ liệu ra Excel" zh="导出数据为 Excel" en="Export Data to Excel" viClass="text-lg font-bold text-ink" />
             </div>
-            <Bi vi="Xuất dữ liệu ra Excel" zh="导出数据为 Excel" en="Export Data to Excel" viClass="text-lg font-bold text-ink" />
+            <p className="mb-4 text-sm text-body">
+              {lang === "zh"
+                ? "Excel 文件包含 4 个工作表：模具数据、订单数据、人员管理、排单计划。"
+                : lang === "en"
+                ? "Excel workbook includes 4 sheets: Molds, Orders, Personnel, Schedule."
+                : "File Excel gồm 4 sheet: Khuôn máy, Đơn hàng, Nhân sự, Kế hoạch."}
+            </p>
+            <div className="mb-5 flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-xs text-mute font-semibold">{t("from", lang)}</span>
+              <DateFieldVN value={range.from} onChange={(v) => setRange({ ...range, from: v })} />
+              <span className="text-xs text-mute font-semibold">{t("to", lang)}</span>
+              <DateFieldVN value={range.to} onChange={(v) => setRange({ ...range, to: v })} />
+            </div>
           </div>
-          <p className="mb-3 text-sm text-mute">
-            {lang === "zh"
-              ? "Excel 文件包含 4 个工作表：模具数据、订单数据、人员管理、排单计划。"
-              : lang === "en"
-              ? "Excel workbook includes 4 sheets: Molds, Orders, Personnel, Schedule."
-              : "File Excel gồm 4 sheet: Khuôn máy, Đơn hàng, Nhân sự, Kế hoạch."}
-          </p>
-          <div className="mb-3 flex flex-wrap items-center gap-2 text-sm">
-            <span className="text-sm text-mute">{t("from", lang)}</span>
-            <DateFieldVN value={range.from} onChange={(v) => setRange({ ...range, from: v })} />
-            <span className="text-sm text-mute">{t("to", lang)}</span>
-            <DateFieldVN value={range.to} onChange={(v) => setRange({ ...range, to: v })} />
+          <div>
+            <button className={btnPrimary} onClick={handleExport}>
+              <Download size={14} /> {t("downloadExcel", lang)}
+            </button>
           </div>
-          <button className={btnPrimary} onClick={handleExport}>
-            <Download size={14} /> {t("downloadExcel", lang)}
-          </button>
         </div>
+
+        {/* Card bên phải: Xóa dữ liệu */}
+        <DeleteDataCard db={db} setDb={setDb} role={role} pushToast={pushToast} confirmAction={confirmAction} scheduleDates={scheduleDates} />
       </div>
-      <DeleteDataCard db={db} setDb={setDb} role={role} pushToast={pushToast} confirmAction={confirmAction} scheduleDates={scheduleDates} />
     </div>
   );
 }

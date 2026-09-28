@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Redo2, Trash2, Undo2 } from "lucide-react";
+import { CheckCheck, Cpu, FileText, Package, PlayCircle, Trash2 } from "lucide-react";
 import { OrderForm } from "../components/orders/OrderForm";
 import { AddActionButton } from "../components/ui/AddActionButton";
+import { UndoRedoButtons } from "../components/ui/UndoRedoButtons";
+import { StatCard } from "../components/ui/StatCard";
 import { ExcelImportModal } from "../components/ui/ExcelImportModal";
 import { SearchBox } from "../components/ui/Fields";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -64,6 +66,19 @@ export function OrdersPage() {
 
   const isSel = (rowId, colKey) => selected && selected.rowId === rowId && selected.colKey === colKey;
   const selCls = (rowId, colKey) => `${isSel(rowId, colKey) ? "ring-2 ring-inset ring-brand bg-brand-tint" : ""}`;
+  const tableRef = useRef(null);
+
+  useEffect(() => {
+    if (!selected) return;
+    const handleOutside = (e) => {
+      if (tableRef.current && !tableRef.current.contains(e.target)) {
+        if (e.target && e.target.closest && (e.target.closest('[role="dialog"]') || e.target.closest('.fixed'))) return;
+        setSelected(null);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [selected]);
   const getCell = (rowId, colKey) => {
     const o = orders.find((x) => x.id === rowId);
     if (!o) return "";
@@ -118,7 +133,10 @@ export function OrdersPage() {
   };
 
   const addOrder = (data) => {
-    setOrdersWithHistory((prev) => [...prev, { id: data.orderCode, ...data }]);
+    const code = String(data.orderCode || "").trim();
+    const sz = String(data.size || "").trim();
+    const uniqueId = `ORD-${code}${sz ? `-${sz}` : ""}-${Date.now()}`;
+    setOrdersWithHistory((prev) => [...prev, { id: uniqueId, ...data, orderCode: code, size: sz }]);
     pushToast("Đã thêm đơn hàng / 已新增", "success");
     setAddOpen(false);
   };
@@ -208,58 +226,74 @@ export function OrdersPage() {
     [db.molds]
   );
 
-  return (
-    <div className="space-y-5">
-      <div className="sticky top-0 z-20 bg-[#F4F7FE] pb-2 space-y-3">
-        <PageHeader
-          vi="Dữ liệu đơn hàng"
-          zh="订单数据"
-          actions={
-            <>
-              <div className="flex h-10 items-center gap-1 border border-line bg-white px-2.5 rounded-xl shadow-xs">
-                <button
-                  type="button"
-                  className="p-1.5 rounded-lg text-body hover:text-brand hover:bg-canvas transition-colors disabled:opacity-40 disabled:hover:text-inherit disabled:hover:bg-transparent"
-                  disabled={!canUndo}
-                  onClick={undo}
-                  title={t("undo", lang)}
-                >
-                  <Undo2 size={16} />
-                </button>
-                <button
-                  type="button"
-                  className="p-1.5 rounded-lg text-body hover:text-brand hover:bg-canvas transition-colors disabled:opacity-40 disabled:hover:text-inherit disabled:hover:bg-transparent"
-                  disabled={!canRedo}
-                  onClick={redo}
-                  title={t("redo", lang)}
-                >
-                  <Redo2 size={16} />
-                </button>
-              </div>
-              <AddActionButton
-                labelVi="Thêm đơn hàng"
-                labelZh="新增订单"
-                labelEn="Add Order"
-                onManualAdd={() => setAddOpen(true)}
-                onExcelAdd={() => setExcelOpen(true)}
-              />
-            </>
-          }
-        />
+  const totalOrders = orders.length;
+  const openOrdersCount = useMemo(() => orders.filter((o) => !o.completed).length, [orders]);
+  const doneOrdersCount = useMemo(() => orders.filter((o) => o.completed).length, [orders]);
+  const assignedMoldOrdersCount = useMemo(() => orders.filter((o) => o.moldId).length, [orders]);
 
+  return (
+    <div className="space-y-4">
+      {/* Venus Stat Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <StatCard
+          icon={Package}
+          label={lang === "zh" ? "订单总数" : lang === "en" ? "Total Orders" : "Tổng đơn hàng"}
+          value={totalOrders}
+          iconBg="bg-[#F4F7FE]"
+          iconColor="text-[#4318FF]"
+        />
+        <StatCard
+          icon={PlayCircle}
+          label={lang === "zh" ? "生产中" : lang === "en" ? "In Production" : "Đang sản xuất"}
+          value={openOrdersCount}
+          badgeText={totalOrders > 0 ? `${Math.round((openOrdersCount / totalOrders) * 100)}%` : "0%"}
+          badgeType="info"
+          iconBg="bg-[#F4F7FE]"
+          iconColor="text-[#4318FF]"
+        />
+        <StatCard
+          icon={CheckCheck}
+          label={lang === "zh" ? "已完成" : lang === "en" ? "Completed" : "Đã hoàn thiện"}
+          value={doneOrdersCount}
+          badgeType="success"
+          iconBg="bg-[#E6FAF5]"
+          iconColor="text-[#05CD99]"
+        />
+        <StatCard
+          icon={Cpu}
+          label={lang === "zh" ? "已配模具" : lang === "en" ? "Mold Assigned" : "Đã ghép khuôn"}
+          value={assignedMoldOrdersCount}
+          badgeType="warning"
+          iconBg="bg-[#FFF8E7]"
+          iconColor="text-[#FFB547]"
+        />
+      </div>
+
+      {/* Action Toolbar */}
+      <div className="flex items-center justify-between gap-3 flex-wrap pt-1">
         <Segmented
           value={tab}
           onChange={setTab}
           items={[
-            { key: "open", label: `${lang === "zh" ? "生产中" : lang === "en" ? "In Production" : "Đang sản xuất"} (${orders.filter((o) => !o.completed).length})` },
-            { key: "done", label: `${lang === "zh" ? "已完成" : lang === "en" ? "Completed" : "Đã hoàn thiện"} (${orders.filter((o) => o.completed).length})` },
+            { key: "open", label: `${lang === "zh" ? "生产中" : lang === "en" ? "In Production" : "Đang sản xuất"} (${openOrdersCount})` },
+            { key: "done", label: `${lang === "zh" ? "已完成" : lang === "en" ? "Completed" : "Đã hoàn thiện"} (${doneOrdersCount})` },
           ]}
         />
+        <div className="flex items-center gap-2.5 ml-auto">
+          <UndoRedoButtons canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
+          <AddActionButton
+            labelVi="Thêm đơn hàng"
+            labelZh="新增订单"
+            labelEn="Add Order"
+            onManualAdd={() => setAddOpen(true)}
+            onExcelAdd={() => setExcelOpen(true)}
+          />
+        </div>
       </div>
 
       <div className={`${card} overflow-hidden bg-white`}>
-        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-270px)]">
-          <table className="w-full min-w-[1080px] table-fixed text-sm border-separate border-spacing-0">
+        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-315px)]">
+          <table ref={tableRef} className="w-full min-w-[1080px] table-fixed text-sm border-separate border-spacing-0">
             <colgroup>
               <col className="w-[5%]" />
               <col className="w-[16%]" />
@@ -271,7 +305,7 @@ export function OrdersPage() {
             </colgroup>
             <thead className="pe-thead text-sm sticky top-0 z-10 bg-[#F8FAFC] shadow-xs">
               <tr className="h-10">
-                <th className="px-3 py-2 text-center align-middle font-semibold text-ink text-sm whitespace-nowrap bg-[#F8FAFC]">
+                <th className="px-3 py-2 text-center align-middle font-bold text-black text-sm whitespace-nowrap bg-[#F8FAFC] border-l border-b border-r border-line">
                   {t("stt", lang)}
                 </th>
                 <SortableTh
@@ -284,6 +318,7 @@ export function OrdersPage() {
                   filterValue={filters.orderCode}
                   onFilterChange={handleFilterChange}
                   data={tabOrders}
+                  center={true}
                 />
                 <SortableTh
                   labelVi="Khuôn"
@@ -295,6 +330,7 @@ export function OrdersPage() {
                   filterValue={filters.moldId}
                   onFilterChange={handleFilterChange}
                   data={tabOrders}
+                  center={true}
                   getDisplayValue={(o) => moldsById[o.moldId] || o.moldId || ""}
                 />
                 <SortableTh
@@ -307,6 +343,7 @@ export function OrdersPage() {
                   filterValue={filters.size}
                   onFilterChange={handleFilterChange}
                   data={tabOrders}
+                  center={true}
                 />
                 <SortableTh
                   labelVi="Tên cuộn màng"
@@ -318,70 +355,75 @@ export function OrdersPage() {
                   filterValue={filters.filmRollName}
                   onFilterChange={handleFilterChange}
                   data={tabOrders}
+                  center={true}
                 />
-                <th className="px-3 py-2 text-left align-middle font-semibold text-ink text-sm whitespace-nowrap bg-[#F8FAFC]">
+                <th className="px-3 py-2 text-center align-middle font-bold text-black text-sm whitespace-nowrap bg-[#F8FAFC] border-b border-r border-line">
                   {t("status", lang)}
                 </th>
-                <th className="px-3 py-2 text-right align-middle font-semibold text-ink text-sm whitespace-nowrap bg-[#F8FAFC]">
+                <th className="px-3 py-2 text-center align-middle font-bold text-black text-sm whitespace-nowrap bg-[#F8FAFC] border-b border-r border-line">
                   {t("actions", lang)}
                 </th>
               </tr>
             </thead>
             <tbody>
               {filteredAndSortedList.map((o, idx) => (
-                <tr key={o.id} className="border-t border-line hover:bg-canvas">
-                  <td className="px-3 py-2 text-mute text-sm font-medium">
+                <tr key={o.id} className="hover:bg-canvas">
+                  <td className="px-3 py-2 text-center align-middle text-black font-semibold text-sm border-l border-b border-r border-line">
                     {idx + 1}
                   </td>
-                  <td className={`px-3 py-2 ${selCls(o.id, "orderCode")}`} onClick={() => setSelected({ rowId: o.id, colKey: "orderCode" })}>
+                  <td className={`px-3 py-2 text-center align-middle border-b border-r border-line ${selCls(o.id, "orderCode")}`} onClick={() => setSelected({ rowId: o.id, colKey: "orderCode" })}>
                     <input
-                      className={`${inputCls} v-input--sm v-input--ghost font-bold text-sm`}
+                      className={`${inputCls} v-input--sm v-input--ghost font-bold text-sm text-center`}
                       value={o.orderCode}
                       onChange={(e) => updateOrder(o.id, { orderCode: e.target.value })}
                     />
                   </td>
-                  <td className={`px-3 py-2 ${selCls(o.id, "moldId")}`} onClick={() => setSelected({ rowId: o.id, colKey: "moldId" })}>
-                    <select
-                      className={`${inputCls} v-input--sm text-sm`}
-                      value={o.moldId || ""}
-                      onChange={(e) => updateOrder(o.id, { moldId: e.target.value || null })}
-                    >
-                      <option value="">— Chưa gán —</option>
-                      {db.molds.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.moldName}
-                        </option>
-                      ))}
-                    </select>
+                  <td className={`px-3 py-2 text-center align-middle border-b border-r border-line ${selCls(o.id, "moldId")}`} onClick={() => setSelected({ rowId: o.id, colKey: "moldId" })}>
+                    <div className="flex justify-center">
+                      <select
+                        className={`${inputCls} v-input--sm text-sm text-center`}
+                        value={o.moldId || ""}
+                        onChange={(e) => updateOrder(o.id, { moldId: e.target.value || null })}
+                      >
+                        <option value=""></option>
+                        {db.molds.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.moldName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </td>
-                  <td className={`px-3 py-2 ${selCls(o.id, "size")}`} onClick={() => setSelected({ rowId: o.id, colKey: "size" })}>
+                  <td className={`px-3 py-2 text-center align-middle border-b border-r border-line ${selCls(o.id, "size")}`} onClick={() => setSelected({ rowId: o.id, colKey: "size" })}>
                     <input
-                      className={`${inputCls} v-input--sm w-20 text-sm`}
+                      className={`${inputCls} v-input--sm w-20 text-sm text-center mx-auto`}
                       value={o.size || ""}
                       onChange={(e) => updateOrder(o.id, { size: e.target.value })}
                     />
                   </td>
-                  <td className={`px-3 py-2 ${selCls(o.id, "filmRollName")}`} onClick={() => setSelected({ rowId: o.id, colKey: "filmRollName" })}>
+                  <td className={`px-3 py-2 text-center align-middle border-b border-r border-line ${selCls(o.id, "filmRollName")}`} onClick={() => setSelected({ rowId: o.id, colKey: "filmRollName" })}>
                     <input
-                      className={`${inputCls} v-input--sm text-sm`}
+                      className={`${inputCls} v-input--sm text-sm text-center`}
                       value={o.filmRollName || ""}
                       onChange={(e) => updateOrder(o.id, { filmRollName: e.target.value })}
                     />
                   </td>
-                  <td className={`px-3 py-2 ${selCls(o.id, "completed")}`} onClick={() => setSelected({ rowId: o.id, colKey: "completed" })}>
-                    <select
-                      className={`w-full max-w-full truncate border border-transparent px-2.5 py-1.5 text-sm font-bold cursor-pointer rounded-xs ${
-                        o.completed ? "border-ok-soft bg-ok-tint text-ok" : "border-brand-soft bg-brand-tint text-brand"
-                      }`}
-                      value={o.completed ? "done" : "open"}
-                      onChange={(e) => handleStatusChange(o, e.target.value === "done")}
-                    >
-                      <option value="open">{getOrderStatusLabel("open", lang)}</option>
-                      <option value="done">{getOrderStatusLabel("done", lang)}</option>
-                    </select>
+                  <td className={`px-3 py-2 text-center align-middle border-b border-r border-line ${selCls(o.id, "completed")}`} onClick={() => setSelected({ rowId: o.id, colKey: "completed" })}>
+                    <div className="flex justify-center">
+                      <select
+                        className={`w-auto min-w-[120px] max-w-full truncate border border-transparent px-2.5 py-1.5 text-sm font-bold cursor-pointer rounded-xs text-center ${
+                          o.completed ? "border-ok-soft bg-ok-tint text-ok" : "border-brand-soft bg-brand-tint text-brand"
+                        }`}
+                        value={o.completed ? "done" : "open"}
+                        onChange={(e) => handleStatusChange(o, e.target.value === "done")}
+                      >
+                        <option value="open">{getOrderStatusLabel("open", lang)}</option>
+                        <option value="done">{getOrderStatusLabel("done", lang)}</option>
+                      </select>
+                    </div>
                   </td>
-                  <td className="px-3 py-2 text-right">
-                    <div className="flex items-center justify-end gap-1">
+                  <td className="px-3 py-2 text-center align-middle border-b border-r border-line">
+                    <div className="flex items-center justify-center gap-1">
                       {o.completed && (
                         <button
                           type="button"
@@ -422,7 +464,7 @@ export function OrdersPage() {
           onSave={addOrder}
           initial={null}
           molds={db.molds}
-          existingCodes={orders.map((o) => o.orderCode)}
+          existingOrders={orders}
         />
       )}
 

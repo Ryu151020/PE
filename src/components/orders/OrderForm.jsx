@@ -7,22 +7,41 @@ import { t } from "../../lib/i18n";
 /* ============================================================
    ORDERS PAGE (simplified: Mã đơn hàng / Khuôn & Size / Cuộn màng)
    ============================================================ */
-export function OrderForm({ open, onClose, onSave, initial, molds, existingCodes }) {
+export function OrderForm({ open, onClose, onSave, initial, molds, existingOrders = [], existingCodes }) {
   const { lang = "vi" } = useApp() || {};
   const [form, setForm] = useState(() => initial || { orderCode: "", moldId: "", size: "", filmRollName: "", completed: false });
   const [error, setError] = useState("");
   const set = (p) => setForm((f) => ({ ...f, ...p }));
+
   const submit = () => {
-    if (!form.orderCode.trim()) {
+    const code = form.orderCode.trim();
+    const sz = (form.size || "").trim();
+    if (!code) {
       setError(lang === "zh" ? "请输入订单编号" : lang === "en" ? "Please enter order code" : "Vui lòng nhập Mã đơn hàng");
       return;
     }
-    if (!initial && existingCodes.includes(form.orderCode.trim())) {
-      setError(lang === "zh" ? "订单编号已存在" : lang === "en" ? "Order code already exists" : "Mã đơn hàng đã tồn tại");
+
+    // Check if an order with the same orderCode AND size already exists
+    const list = existingOrders.length > 0 ? existingOrders : (Array.isArray(existingCodes) ? existingCodes.map((c) => (typeof c === "object" ? c : { orderCode: c, size: "" })) : []);
+    const isDuplicate = list.some((o) => {
+      if (initial && o.id === initial.id) return false;
+      const sameCode = String(o.orderCode || "").trim().toLowerCase() === code.toLowerCase();
+      const sameSize = String(o.size || "").trim().toLowerCase() === sz.toLowerCase();
+      return sameCode && sameSize;
+    });
+
+    if (isDuplicate) {
+      setError(
+        lang === "zh"
+          ? `订单编号 ${code}${sz ? ` (Size: ${sz})` : ""} 已存在`
+          : lang === "en"
+          ? `Order ${code}${sz ? ` (Size: ${sz})` : ""} already exists`
+          : `Đơn hàng ${code}${sz ? ` (Size: ${sz})` : ""} đã tồn tại`
+      );
       return;
     }
     setError("");
-    onSave(form);
+    onSave({ ...form, orderCode: code, size: sz });
   };
 
   const title = initial

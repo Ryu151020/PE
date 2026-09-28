@@ -91,11 +91,10 @@ export function EmployeeChip({ employee, editable, onRemove, draggable, onDragSt
       <span
         ref={anchorRef}
         draggable={draggable} onDragStart={onDragStart}
-        className={`inline-flex items-center gap-1 rounded-full bg-white border border-line pl-1.5 pr-1 py-0.5 text-xs font-medium text-ink hover:bg-canvas ${draggable ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}
+        className={`inline-flex items-center gap-1 rounded-full bg-white border border-line px-2 py-0.5 text-xs font-medium text-ink hover:bg-canvas ${draggable ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}
         onMouseEnter={openPopover} onMouseLeave={scheduleChipHoverClose}
       >
-        <span className={`h-2 w-2 shrink-0 rounded-full ${POSITION_DOT[employee.position] || "bg-mute"}`} />
-        <span className="truncate" style={{ maxWidth: 118 }}>{employee.vietnameseName}</span>
+        <span className="truncate" style={{ maxWidth: 125 }}>{employee.vietnameseName}</span>
         {EMP_STATUS_TAG[employee.status] && <span className={`rad-6 ${EMP_STATUS_TAG[employee.status].color} px-1 text-xs font-bold text-white`}>{EMP_STATUS_TAG[employee.status].char}</span>}
         {editable && (
           <button className="ml-0.5 text-mute hover:text-bad" onClick={(e) => { e.stopPropagation(); onRemove && onRemove(); }}><X size={12} /></button>
@@ -170,7 +169,15 @@ export function EmployeeMultiSelect({ candidates, selectedIds, editable, onChang
       )}
       {editable && (
         <span ref={addContainerRef} className="relative">
-          <button className="flex h-[22px] w-[22px] items-center justify-center rounded-xs border border-dashed border-line2 text-mute hover:border-brand hover:text-brand" onClick={() => setAddOpen((v) => !v)}><Plus size={13} /></button>
+          <button
+            className={`flex h-[22px] w-[22px] items-center justify-center rounded-xs border border-dashed border-line2 text-mute hover:border-brand hover:text-brand transition-opacity ${
+              addOpen ? "opacity-100 border-brand text-brand" : "opacity-0 group-hover:opacity-100"
+            }`}
+            onClick={() => setAddOpen((v) => !v)}
+            title="Thêm nhân sự"
+          >
+            <Plus size={13} />
+          </button>
           {addOpen && (
             <div className="absolute left-0 top-full z-40 mt-1 w-[250px] rounded-xs border border-line bg-white p-2 shadow-md">
               <input autoFocus className={`${inputCls} mb-1.5 text-sm`} placeholder="Tìm công nhân... / 搜索工人..." value={query} onChange={(e) => setQuery(e.target.value)} />

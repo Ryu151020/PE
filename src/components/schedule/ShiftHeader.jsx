@@ -47,11 +47,11 @@ export function LeaderMiniBar({ leaderId, teamLeaderIds, employeesById, shiftLea
           <>
             <button
               type="button"
-              className="flex items-center gap-1 border border-current bg-white/80 px-2 py-0.5 text-sm rounded-xs max-w-[120px] text-ink"
+              className="flex items-center gap-1 border border-transparent hover:border-current bg-white/40 hover:bg-white/90 px-2 py-0.5 text-xs rounded-xs text-ink transition-colors cursor-pointer"
               onClick={() => setLeaderOpen((v) => !v)}
             >
-              <span className="truncate">{currentLeader ? currentLeader.vietnameseName : "—"}</span>
-              <ChevronDown size={12} className="opacity-70 shrink-0" />
+              <span className="whitespace-nowrap min-w-[20px]">{currentLeader ? currentLeader.vietnameseName : ""}</span>
+              <ChevronDown size={12} className="opacity-60 shrink-0" />
             </button>
             {leaderOpen && (
               <div className="absolute left-0 top-full z-40 mt-1 w-[200px] border border-line bg-white p-2 shadow-lg rounded-xs text-ink text-left">
@@ -92,7 +92,7 @@ export function LeaderMiniBar({ leaderId, teamLeaderIds, employeesById, shiftLea
             )}
           </>
         ) : (
-          <span className="font-medium text-sm">{currentLeader ? currentLeader.vietnameseName : "—"}</span>
+          <span className="font-medium text-xs">{currentLeader ? currentLeader.vietnameseName : ""}</span>
         )}
       </span>
 
@@ -101,16 +101,16 @@ export function LeaderMiniBar({ leaderId, teamLeaderIds, employeesById, shiftLea
         {editable ? (
           <button
             type="button"
-            className="flex items-center gap-1 border border-current bg-white/80 px-2 py-0.5 text-sm rounded-xs max-w-[150px] text-ink"
+            className="flex items-center gap-1 border border-transparent hover:border-current bg-white/40 hover:bg-white/90 px-2 py-0.5 text-xs rounded-xs text-ink transition-colors cursor-pointer"
             onClick={() => setTeamOpen((v) => !v)}
           >
-            <span className="truncate">
-              {teamNames.length ? teamNames.join(", ") : t("selectPlaceholder", lang)}
+            <span className="whitespace-nowrap min-w-[20px]">
+              {teamNames.length ? teamNames.join(", ") : ""}
             </span>
-            <ChevronDown size={12} className="opacity-70 shrink-0" />
+            <ChevronDown size={12} className="opacity-60 shrink-0" />
           </button>
         ) : (
-          <span className="font-medium text-sm">{teamNames.length ? teamNames.join(", ") : "—"}</span>
+          <span className="font-medium text-xs">{teamNames.length ? teamNames.join(", ") : ""}</span>
         )}
         {editable && teamOpen && (
           <div className="absolute left-0 top-full z-40 mt-1 w-[220px] border border-line bg-white p-2 shadow-lg rounded-xs text-ink text-left">
@@ -125,7 +125,7 @@ export function LeaderMiniBar({ leaderId, teamLeaderIds, employeesById, shiftLea
                 className="w-full text-sm outline-none bg-transparent"
               />
             </div>
-            <div className="max-h-36 overflow-y-auto space-y-0.5">
+            <div className="max-h-36 overflow-y-auto space-y-1">
               {filteredTeamLeaders.map((e) => (
                 <label key={e.id} className="flex items-center gap-2 px-1.5 py-1 text-sm hover:bg-canvas rounded-xs cursor-pointer">
                   <input
@@ -162,20 +162,20 @@ export function ShiftHeader({ dayData, employees, employeesById, editable, onCha
   return (
     <thead className="sticky top-0 z-20">
       <tr className="text-xs">
-        <th rowSpan={3} className="z-30 pe-th border-b border-r border-line px-3 py-3 font-bold" style={{ position: "sticky", left: L0, width: W0, minWidth: W0, maxWidth: W0 }}>
-          <Bi vi="STT" zh="序号" en="No." center />
+        <th rowSpan={3} className="z-30 pe-th border-b border-r border-line px-3 py-3 font-bold text-black" style={{ position: "sticky", left: L0, width: W0, minWidth: W0, maxWidth: W0 }}>
+          <Bi vi="STT" zh="序号" en="No." center viClass="font-bold text-black text-sm" zhClass="font-bold text-black text-sm" enClass="font-bold text-black text-sm" />
         </th>
-        <th rowSpan={3} className="z-30 pe-th border-b border-r border-line px-3 py-3 font-bold text-left" style={{ position: "sticky", left: L1, width: W1, minWidth: W1, maxWidth: W1 }}>
-          <Bi vi="Trạng thái máy" zh="机器状态" en="Machine Status" />
+        <th rowSpan={3} className="z-30 pe-th border-b border-r border-line px-3 py-3 font-bold text-center align-middle text-black" style={{ position: "sticky", left: L1, width: W1, minWidth: W1, maxWidth: W1 }}>
+          <Bi vi="Trạng thái máy" zh="机器状态" en="Machine Status" center viClass="font-bold text-black text-sm" zhClass="font-bold text-black text-sm" enClass="font-bold text-black text-sm" />
         </th>
-        <th rowSpan={3} className="z-30 pe-th border-b border-r border-line px-3 py-3 font-bold text-left" style={{ position: "sticky", left: L2, width: W2, minWidth: W2, maxWidth: W2, boxShadow: "8px 0 8px -8px rgba(112,144,176,0.28)" }}>
-          <Bi vi="Khuôn máy" zh="模具" en="Mold" />
+        <th rowSpan={3} className="z-30 pe-th border-b border-r border-line px-3 py-3 font-bold text-center align-middle text-black" style={{ position: "sticky", left: L2, width: W2, minWidth: W2, maxWidth: W2, boxShadow: "8px 0 8px -8px rgba(112,144,176,0.28)" }}>
+          <Bi vi="Khuôn máy" zh="模具" en="Mold" center viClass="font-bold text-black text-sm" zhClass="font-bold text-black text-sm" enClass="font-bold text-black text-sm" />
         </th>
-        <th rowSpan={3} className="pe-th border-b border-r border-line px-3 py-3 font-bold text-left" style={{ minWidth: 120 }}>
-          <Bi vi="Đơn hàng" zh="订单" en="Order" />
+        <th rowSpan={3} className="pe-th border-b border-r border-line px-3 py-3 font-bold text-center align-middle text-black" style={{ minWidth: 120 }}>
+          <Bi vi="Đơn hàng" zh="订单" en="Order" center viClass="font-bold text-black text-sm" zhClass="font-bold text-black text-sm" enClass="font-bold text-black text-sm" />
         </th>
-        <th rowSpan={3} className="pe-th border-b border-r border-line px-3 py-3 font-bold text-left" style={{ minWidth: 110 }}>
-          <Bi vi="Cuộn màng" zh="卷膜" en="Film Roll" />
+        <th rowSpan={3} className="pe-th border-b border-r border-line px-3 py-3 font-bold text-center align-middle text-black" style={{ minWidth: 110 }}>
+          <Bi vi="Cuộn màng" zh="卷膜" en="Film Roll" center viClass="font-bold text-black text-sm" zhClass="font-bold text-black text-sm" enClass="font-bold text-black text-sm" />
         </th>
         {dayCollapsed ? (
           <th rowSpan={3} className="bg-day-head text-warn border-b border-r border-day p-0 text-center cursor-pointer hover:bg-day-head-hover" style={{ width: 26, minWidth: 26 }} onClick={onToggleDay} title={t("expandDayShift", lang)}>
@@ -228,31 +228,31 @@ export function ShiftHeader({ dayData, employees, employeesById, editable, onCha
       </tr>
       <tr className="text-xs">
         {!dayCollapsed && (<>
-          <th className="bg-day-soft border-b border-r border-day px-2 py-1.5 text-warn font-bold text-left" style={{ minWidth: 210 }}>
-            <Bi vi="Công nhân" zh="工人" en="Workers" />
+          <th className="bg-day-soft border-b border-r border-day px-2 py-1.5 text-warn font-bold text-center align-middle" style={{ minWidth: 210 }}>
+            <Bi vi="Công nhân" zh="工人" en="Workers" center />
           </th>
-          <th className="bg-day-soft border-b border-r border-day px-2 py-1.5 text-warn font-bold text-left" style={{ minWidth: 70 }}>
-            <Bi vi="Tăng ca" zh="加班" en="Overtime" />
+          <th className="bg-day-soft border-b border-r border-day px-2 py-1.5 text-warn font-bold text-center align-middle" style={{ minWidth: 70 }}>
+            <Bi vi="Tăng ca" zh="加班" en="Overtime" center />
           </th>
-          <th className="bg-day-soft border-b border-r border-day px-2 py-1.5 text-warn font-bold text-left" style={{ minWidth: 110 }}>
-            <Bi vi="Kỹ thuật viên" zh="技术员" en="Technicians" />
+          <th className="bg-day-soft border-b border-r border-day px-2 py-1.5 text-warn font-bold text-center align-middle" style={{ minWidth: 110 }}>
+            <Bi vi="Kỹ thuật viên" zh="技术员" en="Technicians" center />
           </th>
-          <th className="bg-day-soft border-b border-r border-day px-2 py-1.5 text-warn font-bold text-left" style={{ minWidth: 110 }}>
-            <Bi vi="Công nhân khác" zh="其他工人" en="Support Staff" />
+          <th className="bg-day-soft border-b border-r border-day px-2 py-1.5 text-warn font-bold text-center align-middle" style={{ minWidth: 110 }}>
+            <Bi vi="Công nhân khác" zh="其他工人" en="Support Staff" center />
           </th>
         </>)}
         {!nightCollapsed && (<>
-          <th className="bg-night-tint border-b border-r border-night px-2 py-1.5 text-night font-bold text-left" style={{ minWidth: 210 }}>
-            <Bi vi="Công nhân" zh="工人" en="Workers" />
+          <th className="bg-night-tint border-b border-r border-night px-2 py-1.5 text-night font-bold text-center align-middle" style={{ minWidth: 210 }}>
+            <Bi vi="Công nhân" zh="工人" en="Workers" center />
           </th>
-          <th className="bg-night-tint border-b border-r border-night px-2 py-1.5 text-night font-bold text-left" style={{ minWidth: 70 }}>
-            <Bi vi="Tăng ca" zh="加班" en="Overtime" />
+          <th className="bg-night-tint border-b border-r border-night px-2 py-1.5 text-night font-bold text-center align-middle" style={{ minWidth: 70 }}>
+            <Bi vi="Tăng ca" zh="加班" en="Overtime" center />
           </th>
-          <th className="bg-night-tint border-b border-r border-night px-2 py-1.5 text-night font-bold text-left" style={{ minWidth: 110 }}>
-            <Bi vi="Kỹ thuật viên" zh="技术员" en="Technicians" />
+          <th className="bg-night-tint border-b border-r border-night px-2 py-1.5 text-night font-bold text-center align-middle" style={{ minWidth: 110 }}>
+            <Bi vi="Kỹ thuật viên" zh="技术员" en="Technicians" center />
           </th>
-          <th className="bg-night-tint border-b border-night px-2 py-1.5 text-night font-bold text-left" style={{ minWidth: 110 }}>
-            <Bi vi="Công nhân khác" zh="其他工人" en="Support Staff" />
+          <th className="bg-night-tint border-b border-r border-night px-2 py-1.5 text-night font-bold text-center align-middle" style={{ minWidth: 110 }}>
+            <Bi vi="Công nhân khác" zh="其他工人" en="Support Staff" center />
           </th>
         </>)}
       </tr>

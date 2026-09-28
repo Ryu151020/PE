@@ -183,13 +183,22 @@ export function applyCellValue(entry, colKey, value, dateKey, employeesById, cla
     case "nightOT": return { entry: { ...entry, nightShift: { ...entry.nightShift, overtimeHours: Number(value) || 0 } }, skipped: [] };
     case "dayWorkers": case "nightWorkers": {
       const shiftKey = colKey === "dayWorkers" ? "dayShift" : "nightShift";
-      const { kept: sched, skipped: rSkip } = filterIds(value);
-      const kept = [], dSkip = [];
-      sched.forEach((id) => { if (claimed[colKey].has(id)) { dSkip.push({ id, reason: "trùng ca với máy khác trong lượt dán này" }); return; } claimed[colKey].add(id); kept.push(id); });
-      return { entry: { ...entry, [shiftKey]: { ...entry[shiftKey], workers: kept } }, skipped: [...rSkip, ...dSkip] };
+      const valIds = Array.isArray(value) ? value : value ? [value] : [];
+      const { kept, skipped } = filterIds(valIds);
+      return { entry: { ...entry, [shiftKey]: { ...entry[shiftKey], workers: kept } }, skipped };
     }
-    case "dayTech": case "nightTech": { const shiftKey = colKey === "dayTech" ? "dayShift" : "nightShift"; const { kept, skipped } = filterIds(value); return { entry: { ...entry, [shiftKey]: { ...entry[shiftKey], technicians: kept } }, skipped }; }
-    case "dayOther": case "nightOther": { const shiftKey = colKey === "dayOther" ? "dayShift" : "nightShift"; const { kept, skipped } = filterIds(value); return { entry: { ...entry, [shiftKey]: { ...entry[shiftKey], otherWorkers: kept } }, skipped }; }
+    case "dayTech": case "nightTech": {
+      const shiftKey = colKey === "dayTech" ? "dayShift" : "nightShift";
+      const valIds = Array.isArray(value) ? value : value ? [value] : [];
+      const { kept, skipped } = filterIds(valIds);
+      return { entry: { ...entry, [shiftKey]: { ...entry[shiftKey], technicians: kept } }, skipped };
+    }
+    case "dayOther": case "nightOther": {
+      const shiftKey = colKey === "dayOther" ? "dayShift" : "nightShift";
+      const valIds = Array.isArray(value) ? value : value ? [value] : [];
+      const { kept, skipped } = filterIds(valIds);
+      return { entry: { ...entry, [shiftKey]: { ...entry[shiftKey], otherWorkers: kept } }, skipped };
+    }
     default: return { entry, skipped: [] };
   }
 }

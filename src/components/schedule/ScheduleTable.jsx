@@ -16,8 +16,10 @@ export function ScheduleTable({ machines, molds, orders, ordersById, entries, ed
 
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef(false);
+  const tableRef = useRef(null);
   const visibleCols = useMemo(() => ["machineStatus", "mold", "order", "filmRoll", ...(dayCollapsed ? [] : ["dayWorkers", "dayOT", "dayTech", "dayOther"]), ...(nightCollapsed ? [] : ["nightWorkers", "nightOT", "nightTech", "nightOther"])], [dayCollapsed, nightCollapsed]);
-  const colType = (k) => (k.endsWith("Workers") ? "workers" : k.endsWith("OT") ? "ot" : k.endsWith("Tech") ? "tech" : k.endsWith("Other") ? "other" : k);
+  const isEmpCol = (k) => k.endsWith("Workers") || k.endsWith("Tech") || k.endsWith("Other");
+  const colType = (k) => (isEmpCol(k) ? "employees" : k.endsWith("OT") ? "ot" : k);
 
   // rectangular selection = every visible column between anchor and focus x every machine row between them
   const buildSelection = useCallback((anchor, focus) => {
@@ -57,6 +59,18 @@ export function ScheduleTable({ machines, molds, orders, ordersById, entries, ed
     return () => window.removeEventListener("mouseup", up);
   }, []);
   useEffect(() => { setSelection(null); }, [dayCollapsed, nightCollapsed, dateKey, editable]);
+
+  useEffect(() => {
+    if (!selection) return;
+    const handleOutsideClick = (e) => {
+      if (tableRef.current && !tableRef.current.contains(e.target)) {
+        if (e.target && e.target.closest && (e.target.closest('[role="dialog"]') || e.target.closest('.fixed'))) return;
+        setSelection(null);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, [selection]);
 
   const cellText = (colKey, v) => {
     if (colKey === "machineStatus") return MACHINE_STATUS_DEFS[v]?.vi || "";
@@ -108,15 +122,14 @@ export function ScheduleTable({ machines, molds, orders, ordersById, entries, ed
     }
     if (assignments.length === 0) { pushToast("Không thể dán: khác loại cột dữ liệu / 无法粘贴：列类型不同", "error"); return; }
 
-    const targetWorkers = { dayWorkers: new Set(), nightWorkers: new Set() };
-    assignments.forEach((a) => { if (a.colKey === "dayWorkers" || a.colKey === "nightWorkers") targetWorkers[a.colKey].add(a.machineId); });
-    const claimed = { dayWorkers: new Set(), nightWorkers: new Set() };
-    machines.forEach((m) => ["dayWorkers", "nightWorkers"].forEach((ck) => { if (!targetWorkers[ck].has(m.id)) getCellValue(entries[m.id], ck).forEach((id) => claimed[ck].add(id)); }));
     const newEntries = { ...entries };
     const allSkipped = [];
     assignments.forEach(({ machineId, colKey, value }) => {
-      if (colKey === "machineStatus") { if (MACHINE_STATUS_DEFS[value]) newEntries[machineId] = { ...newEntries[machineId], machineStatus: value }; return; }   // status is per-day, part of the draft
-      const { entry, skipped } = applyCellValue(newEntries[machineId], colKey, value, dateKey, employeesById, claimed, ordersById);
+      if (colKey === "machineStatus") {
+        if (MACHINE_STATUS_DEFS[value]) newEntries[machineId] = { ...newEntries[machineId], machineStatus: value };
+        return;
+      }
+      const { entry, skipped } = applyCellValue(newEntries[machineId], colKey, value, dateKey, employeesById, {}, ordersById);
       newEntries[machineId] = entry;
       skipped.forEach((s) => allSkipped.push({ ...s, machineId }));
     });
@@ -152,9 +165,8 @@ export function ScheduleTable({ machines, molds, orders, ordersById, entries, ed
     const cols = selection.colKeys.filter((k) => k !== "machineStatus" && k !== "filmRoll");
     if (cols.length === 0) return;
     const newEntries = { ...entries };
-    const claimed = { dayWorkers: new Set(), nightWorkers: new Set() };
     selection.machineIds.forEach((machineId) => {
-      cols.forEach((colKey) => { const { entry } = applyCellValue(newEntries[machineId], colKey, "", dateKey, employeesById, claimed, ordersById); newEntries[machineId] = entry; });
+      cols.forEach((colKey) => { const { entry } = applyCellValue(newEntries[machineId], colKey, "", dateKey, employeesById, {}, ordersById); newEntries[machineId] = entry; });
     });
     onBulkUpdate(newEntries);
     const total = selection.machineIds.length * cols.length;
@@ -177,7 +189,7 @@ export function ScheduleTable({ machines, molds, orders, ordersById, entries, ed
   return (
     <div className={`${card} v-rise overflow-hidden`} style={{ "--i": 4 }}>
       <div style={{ overflowX: "auto", overflowY: "hidden" }}>
-        <table className="w-full text-sm" style={{ borderCollapse: "separate", borderSpacing: 0, userSelect: dragging ? "none" : undefined }}>
+        <table ref={tableRef} className="w-full text-sm" style={{ borderCollapse: "separate", borderSpacing: 0, userSelect: dragging ? "none" : undefined }}>
           <ShiftHeader dayData={dayData} employees={employees} employeesById={employeesById} editable={editable} onChangeLeaders={onChangeLeaders}
             dayCollapsed={dayCollapsed} nightCollapsed={nightCollapsed} onToggleDay={() => setDayCollapsed((v) => !v)} onToggleNight={() => setNightCollapsed((v) => !v)} />
           <tbody>

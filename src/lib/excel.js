@@ -70,7 +70,18 @@ export function parseWorkbook(workbook) {
   if (workbook.SheetNames.includes("Đơn hàng")) {
     const rows = XLSX.utils.sheet_to_json(workbook.Sheets["Đơn hàng"]);
     const moldByName = {}; (result.molds || []).forEach((m) => { moldByName[m.moldName] = m.id; });
-    result.orders = rows.map((r) => ({ id: String(r["Mã đơn hàng"] || ""), orderCode: String(r["Mã đơn hàng"] || ""), moldId: moldByName[r["Khuôn"]] || null, size: r["Size"] || "", filmRollName: r["Tên cuộn màng"] || "", completed: r["Trạng thái"] === "Đã hoàn thiện" })).filter((o) => o.orderCode);
+    result.orders = rows.map((r, i) => {
+      const code = String(r["Mã đơn hàng"] || "").trim();
+      const sz = String(r["Size"] || "").trim();
+      return {
+        id: `ORD-${code}${sz ? `-${sz}` : ""}-${i}`,
+        orderCode: code,
+        moldId: moldByName[r["Khuôn"]] || null,
+        size: sz,
+        filmRollName: r["Tên cuộn màng"] || "",
+        completed: r["Trạng thái"] === "Đã hoàn thiện"
+      };
+    }).filter((o) => o.orderCode);
   }
   if (workbook.SheetNames.includes("Nhân sự")) {
     const rows = XLSX.utils.sheet_to_json(workbook.Sheets["Nhân sự"]);
@@ -91,7 +102,16 @@ export function buildSchedulesFromRows(rows, machines, employees, molds, orders)
   const employeesByCode = {}; employees.forEach((e) => { employeesByCode[e.employeeCode] = e.id; });
   const machineByNumber = {}; machines.forEach((m) => { machineByNumber[m.machineNumber] = m; });
   const moldByName = {}; molds.forEach((m) => { moldByName[m.moldName] = m.id; });
-  const orderByCode = {}; orders.forEach((o) => { orderByCode[o.orderCode] = o.id; });
+  const orderByCode = {};
+  orders.forEach((o) => {
+    orderByCode[o.orderCode] = o.id;
+    if (o.size) {
+      orderByCode[`${o.orderCode} (${o.size})`] = o.id;
+      orderByCode[`${o.orderCode} (${o.size.toLowerCase()})`] = o.id;
+      orderByCode[`${o.orderCode} ${o.size}`] = o.id;
+      orderByCode[`${o.orderCode}_${o.size}`] = o.id;
+    }
+  });
   const splitCodes = (s) => String(s || "").split(";").map((x) => x.trim()).filter(Boolean).map((token) => token.split("(")[0].trim()).map((code) => employeesByCode[code]).filter(Boolean);
   const statusFromLabel = (label) => (Object.keys(MACHINE_STATUS_DEFS).find((k) => k === label || MACHINE_STATUS_DEFS[k].vi === label)) || null;
   const byDate = {};
@@ -216,28 +236,35 @@ export function parseAndDedupOrders(fileBuffer, existingOrders, molds = []) {
     moldByName[m.moldName.trim().toLowerCase()] = m.id;
   });
 
-  const existingCodes = new Set(existingOrders.map((o) => String(o.orderCode || "").trim().toLowerCase()));
+  const getOrderKey = (code, size) =>
+    `${String(code || "").trim().toLowerCase()}___${String(size || "").trim().toLowerCase()}`;
+
+  const existingKeys = new Set(
+    existingOrders.map((o) => getOrderKey(o.orderCode, o.size))
+  );
   const newOrders = [];
   let skippedCount = 0;
 
   rows.forEach((r, idx) => {
     const code = String(r["Mã đơn hàng"] || r["orderCode"] || "").trim();
     if (!code) return;
+    const size = String(r["Size"] || r["size"] || "").trim();
+    const key = getOrderKey(code, size);
 
-    if (existingCodes.has(code.toLowerCase())) {
+    if (existingKeys.has(key)) {
       skippedCount++;
       return;
     }
 
-    existingCodes.add(code.toLowerCase());
+    existingKeys.add(key);
     const moldRaw = String(r["Khuôn"] || r["moldName"] || "").trim().toLowerCase();
     const moldId = moldByName[moldRaw] || null;
 
     newOrders.push({
-      id: code,
+      id: `ORD-${code}${size ? `-${size}` : ""}-${Date.now()}-${idx}`,
       orderCode: code,
       moldId,
-      size: String(r["Size"] || r["size"] || "").trim(),
+      size,
       filmRollName: String(r["Tên cuộn màng"] || r["Cuộn màng"] || r["filmRollName"] || "").trim(),
       completed: String(r["Trạng thái"] || "").trim() === "Đã hoàn thiện",
     });

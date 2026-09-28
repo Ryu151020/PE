@@ -85,35 +85,37 @@ export function DeleteDataCard({ db, setDb, role, pushToast, confirmAction, sche
   );
 
   return (
-    <div className={`${card} v-rise p-6`} style={{ "--i": 2 }}>
-      <div className="mb-4 flex items-center gap-4">
-        <div className="v-stat-icon bg-bad-tint text-bad"><Trash2 size={24} /></div>
-        <Bi vi="Xóa dữ liệu" zh="删除数据" en="Delete Data" viClass="text-lg font-bold text-ink" />
-      </div>
-      <Segmented
-        value={mode}
-        onChange={setMode}
-        items={[
-          { key: "range", label: lang === "zh" ? "按日期范围" : lang === "en" ? "Date Range" : "Theo khoảng ngày" },
-          { key: "allPlans", label: lang === "zh" ? "全部排班" : lang === "en" ? "All Schedules" : "Toàn bộ kế hoạch" },
-          { key: "everything", label: lang === "zh" ? "全部数据" : lang === "en" ? "All Data" : "Toàn bộ dữ liệu" },
-        ]}
-      />
-      <p className="mt-4 text-sm text-body">{DESC[mode]}</p>
-      {mode === "range" && (
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-xs text-mute">{t("from", lang)}</span>
-          <DateFieldVN value={range.from} onChange={(v) => setRange({ ...range, from: v })} />
-          <span className="text-xs text-mute">{t("to", lang)}</span>
-          <DateFieldVN value={range.to} onChange={(v) => setRange({ ...range, to: v })} />
+    <div className={`${card} v-rise v-hover-lift p-6 flex flex-col justify-between h-full`} style={{ "--i": 2 }}>
+      <div>
+        <div className="mb-4 flex items-center gap-4">
+          <div className="v-stat-icon bg-bad-tint text-bad"><Trash2 size={24} /></div>
+          <Bi vi="Xóa dữ liệu" zh="删除数据" en="Delete Data" viClass="text-lg font-bold text-ink" />
         </div>
-      )}
-      <div className={`mt-4 rad-14 px-4 py-3 text-sm font-medium ${rangeInvalid ? "bg-bad-tint text-bad" : mode === "everything" ? "bg-bad-tint text-bad" : "bg-canvas text-body"}`}>
-        {rangeInvalid
-          ? (lang === "zh" ? "开始日期不能晚于结束日期" : lang === "en" ? "Start date must be on or before end date" : "Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc")
-          : summary}
+        <Segmented
+          value={mode}
+          onChange={setMode}
+          items={[
+            { key: "range", label: lang === "zh" ? "按日期范围" : lang === "en" ? "Date Range" : "Theo khoảng ngày" },
+            { key: "allPlans", label: lang === "zh" ? "全部排班" : lang === "en" ? "All Schedules" : "Toàn bộ kế hoạch" },
+            { key: "everything", label: lang === "zh" ? "全部数据" : lang === "en" ? "All Data" : "Toàn bộ dữ liệu" },
+          ]}
+        />
+        <p className="mt-4 text-sm text-body">{DESC[mode]}</p>
+        {mode === "range" && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-xs text-mute font-semibold">{t("from", lang)}</span>
+            <DateFieldVN value={range.from} onChange={(v) => setRange({ ...range, from: v })} />
+            <span className="text-xs text-mute font-semibold">{t("to", lang)}</span>
+            <DateFieldVN value={range.to} onChange={(v) => setRange({ ...range, to: v })} />
+          </div>
+        )}
+        <div className={`mt-4 rounded-xl px-4 py-3 text-sm font-medium ${rangeInvalid ? "bg-bad-tint text-bad" : mode === "everything" ? "bg-bad-tint text-bad" : "bg-canvas text-body"}`}>
+          {rangeInvalid
+            ? (lang === "zh" ? "开始日期不能晚于结束日期" : lang === "en" ? "Start date must be on or before end date" : "Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc")
+            : summary}
+        </div>
       </div>
-      <div className="mt-4 flex flex-wrap items-center gap-3">
+      <div className="mt-5 flex flex-wrap items-center gap-3">
         <button className={btnDanger} disabled={!isAdmin || nothing || rangeInvalid} onClick={askDelete}>
           <Trash2 size={14} /> {t("deleteData", lang)}
         </button>

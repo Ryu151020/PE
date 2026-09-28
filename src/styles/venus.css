@@ -73,7 +73,7 @@
 .v-card .v-btn--secondary, .v-modal .v-btn--secondary, .v-sidebar .v-btn--secondary { background: var(--v-grey-300); }
 .v-btn--ghost { background: transparent; color: var(--v-grey-600); }
 .v-btn--ghost:hover:not(:disabled) { background: var(--v-grey-300); color: var(--v-primary); }
-.v-btn--icon { width: 40px; height: 40px; padding: 0; border-radius: 12px; }
+.v-btn--icon { width: 40px; height: 40px; padding: 0; border-radius: 9999px; }
 
 /* ============ 5. Inputs ============ */
 .pe-app .v-input { border: 1px solid var(--v-grey-400); border-radius: 12px; background: #fff; padding: 8px 12px; font-size: 13px; line-height: 20px; font-weight: 500; color: var(--v-dark-900); transition: border-color var(--v-dur-fast), box-shadow var(--v-dur-fast), background-color var(--v-dur-fast); }
@@ -94,15 +94,21 @@
 .v-badge { display: inline-flex; align-items: center; gap: 4px; border-radius: 58px; padding: 3px 10px; font-size: 12px; line-height: 20px; font-weight: 700; }
 
 /* ============ 7. Segmented tabs (sliding pill) ============ */
-.v-seg { position: relative; display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; background: #fff; border-radius: 16px; }
+.v-seg { position: relative; display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; background: #fff; border-radius: 9999px; border: 1px solid var(--v-grey-400); }
 .v-card .v-seg { background: var(--v-grey-300); }
-.v-seg-ind { position: absolute; left: 0; top: 0; background: var(--v-primary); border-radius: 12px; box-shadow: 0 8px 20px rgba(67, 24, 255, .25); pointer-events: none; transition: transform 380ms cubic-bezier(.3, 1.25, .5, 1), width 250ms var(--v-ease-out), height 250ms var(--v-ease-out); }
-.v-seg-btn { position: relative; z-index: 1; padding: 8px 16px; border: 0; border-radius: 12px; background: none; font-size: 14px; line-height: 20px; font-weight: 500; color: var(--v-grey-600); cursor: pointer; transition: color var(--v-dur-base); }
+.v-seg-ind { position: absolute; left: 0; top: 0; background: var(--v-primary); border-radius: 9999px; box-shadow: 0 8px 20px rgba(67, 24, 255, .25); pointer-events: none; transition: transform 380ms cubic-bezier(.3, 1.25, .5, 1), width 250ms var(--v-ease-out), height 250ms var(--v-ease-out); }
+.v-seg-btn { position: relative; z-index: 1; padding: 8px 18px; border: 0; border-radius: 9999px; background: none; font-size: 13px; line-height: 20px; font-weight: 600; color: var(--v-grey-600); cursor: pointer; transition: color var(--v-dur-base); }
 .v-seg-btn:hover { color: var(--v-dark-900); }
 .v-seg-btn.is-on, .v-seg-btn.is-on:hover { color: #fff; font-weight: 700; }
-.v-seg--sm .v-seg-btn { padding: 6px 12px; font-size: 13px; }
+.v-seg--sm .v-seg-btn { padding: 5px 14px; font-size: 12px; }
 
-/* ============ 8. Sidebar (pill nav, sliding indicator) ============ */
+/* ============ 8. Stat Cards (Venus 20px card + circular icon) ============ */
+.v-stat-card { display: flex; align-items: center; gap: 16px; background: #fff; border-radius: 20px; padding: 18px 20px; border: 1px solid rgba(226, 232, 240, 0.7); box-shadow: 0 2px 10px rgba(112, 144, 176, 0.06); transition: transform var(--v-dur-base) var(--v-ease-out), box-shadow var(--v-dur-base) var(--v-ease-out); }
+.v-stat-card:hover { transform: translateY(-2px); box-shadow: var(--v-shadow-soft); }
+.v-stat-icon-wrap { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex: none; transition: transform var(--v-dur-base) var(--v-ease-spring); }
+.v-stat-card:hover .v-stat-icon-wrap { transform: scale(1.08); }
+
+/* ============ 9. Sidebar (pill nav, sliding indicator) ============ */
 .v-sidebar { background: #fff; overflow: hidden; transition: width 300ms var(--v-ease-out); }
 .v-logo-mark { display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex: none; border-radius: 10px; background: var(--v-primary); color: #fff; font-weight: 700; font-size: 20px; font-family: 'Poppins', sans-serif; }
 .v-nav { position: relative; display: flex; flex-direction: column; gap: 8px; }
@@ -118,9 +124,9 @@
 .v-nav-hover.is-on { opacity: 1; }
 .v-promo { margin: 0 20px 16px; padding: 20px 16px; border-radius: 24px; background: var(--v-primary-gradient); color: #fff; text-align: center; }
 
-/* ============ 9. Header + search + menus ============ */
-.v-search { position: relative; display: flex; align-items: center; width: 210px; max-width: 100%; height: 42px; background: #fff; border-radius: 10px; color: var(--v-dark-900); transition: width var(--v-dur-slow) var(--v-ease-out), box-shadow var(--v-dur-base); }
-.v-search:focus-within { width: 250px; box-shadow: var(--v-shadow-soft); }
+/* ============ 10. Header + search + menus ============ */
+.v-search { position: relative; display: flex; align-items: center; width: 220px; max-width: 100%; height: 40px; background: #fff; border-radius: 9999px; border: 1px solid var(--v-grey-400); color: var(--v-dark-900); transition: width var(--v-dur-slow) var(--v-ease-out), box-shadow var(--v-dur-base), border-color var(--v-dur-fast); }
+.v-search:focus-within { width: 260px; box-shadow: var(--v-shadow-soft); border-color: var(--v-primary); }
 .v-search > svg { position: absolute; left: 18px; transition: color var(--v-dur-base), transform var(--v-dur-base) var(--v-ease-spring); }
 .v-search:focus-within > svg { color: var(--v-primary); transform: scale(1.15); }
 .v-search input { flex: 1; min-width: 0; height: 100%; padding: 0 44px 0 42px; border: 0; background: transparent; font-size: 12px; line-height: 20px; color: var(--v-dark-900); }
@@ -142,8 +148,8 @@
 .v-date-badge { position: absolute; right: -6px; bottom: -6px; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #fff; color: var(--v-primary); box-shadow: var(--v-shadow-soft); pointer-events: none; }
 
 /* ============ 11. Tables ============ */
-.pe-thead th { background: #fff; color: var(--v-grey-600); font-weight: 700; border-bottom: 1px solid var(--v-grey-400); }
-.pe-th { background: #fff; color: var(--v-grey-700); }
+.pe-thead th { background: #fff; color: #000; font-weight: 700; border-bottom: 1px solid var(--v-grey-400); }
+.pe-th { background: #fff; color: #000; font-weight: 700; }
 
 /* ============ 12. Overlays ============ */
 .v-scrim { background: rgba(27, 37, 89, .35); animation: v-fade 200ms ease both; }

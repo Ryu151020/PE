@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ClipboardPaste, Eye, Redo2, Trash2, Undo2 } from "lucide-react";
+import { Award, Briefcase, ClipboardPaste, Eye, Trash2, UserCheck, Users } from "lucide-react";
 import { DateRangeFilter } from "../components/employees/DateRangeFilter";
 import { EmployeeDetailDrawer } from "../components/employees/EmployeeDetailDrawer";
 import { EmployeeForm } from "../components/employees/EmployeeForm";
 import { PasteImportModal } from "../components/employees/PasteImportModal";
 import { ResignReasonCell } from "../components/employees/ResignReasonCell";
 import { AddActionButton } from "../components/ui/AddActionButton";
+import { UndoRedoButtons } from "../components/ui/UndoRedoButtons";
+import { StatCard } from "../components/ui/StatCard";
 import { ExcelImportModal } from "../components/ui/ExcelImportModal";
 import { SearchBox } from "../components/ui/Fields";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -144,6 +146,19 @@ export function EmployeesPage() {
 
   const isSel = (rowId, colKey) => selected && selected.rowId === rowId && selected.colKey === colKey;
   const selCls = (rowId, colKey) => `${isSel(rowId, colKey) ? "ring-2 ring-inset ring-brand bg-brand-tint" : ""}`;
+  const tableRef = useRef(null);
+
+  useEffect(() => {
+    if (!selected) return;
+    const handleOutside = (e) => {
+      if (tableRef.current && !tableRef.current.contains(e.target)) {
+        if (e.target && e.target.closest && (e.target.closest('[role="dialog"]') || e.target.closest('.fixed'))) return;
+        setSelected(null);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [selected]);
   const EMP_CELL_KEYS = ["employeeCode", "vietnameseName", "chineseName", "birthYear", "phone", "address", "joinDate", "position", "status", "resignDate", "resignReason"];
   const getCell = (rowId, colKey) => {
     const e = employees.find((x) => x.id === rowId);
@@ -241,61 +256,83 @@ export function EmployeesPage() {
 
 
 
-  return (
-    <div className="space-y-5">
-      <div className="sticky top-0 z-20 bg-[#F4F7FE] pb-2 space-y-3">
-        <PageHeader
-          vi="Nhân sự"
-          zh="人员管理"
-          actions={
-            <>
-              <div className="flex h-10 items-center gap-1 border border-line bg-white px-2.5 rounded-xl shadow-xs">
-                <button
-                  type="button"
-                  className="p-1.5 rounded-lg text-body hover:text-brand hover:bg-canvas transition-colors disabled:opacity-40 disabled:hover:text-inherit disabled:hover:bg-transparent"
-                  disabled={!canUndo}
-                  onClick={undo}
-                  title={t("undo", lang)}
-                >
-                  <Undo2 size={16} />
-                </button>
-                <button
-                  type="button"
-                  className="p-1.5 rounded-lg text-body hover:text-brand hover:bg-canvas transition-colors disabled:opacity-40 disabled:hover:text-inherit disabled:hover:bg-transparent"
-                  disabled={!canRedo}
-                  onClick={redo}
-                  title={t("redo", lang)}
-                >
-                  <Redo2 size={16} />
-                </button>
-              </div>
-              <AddActionButton
-                labelVi="Thêm nhân sự"
-                labelZh="新增员工"
-                labelEn="Add Employee"
-                onManualAdd={() => setForm({})}
-                onExcelAdd={() => setExcelOpen(true)}
-              />
-            </>
-          }
-        />
+  const totalEmployees = employees.length;
+  const activeCount = useMemo(() => employees.filter((e) => isActive(e)).length, [employees]);
+  const leaderCount = useMemo(
+    () => employees.filter((e) => isActive(e) && (e.position === "Ca trưởng" || e.position === "Tổ trưởng")).length,
+    [employees]
+  );
+  const workerCount = useMemo(
+    () => employees.filter((e) => isActive(e) && (e.position === "Công nhân" || e.position === "Kỹ thuật viên")).length,
+    [employees]
+  );
 
+  return (
+    <div className="space-y-4">
+      {/* Venus Stat Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <StatCard
+          icon={Users}
+          label={lang === "zh" ? "员工总数" : lang === "en" ? "Total Staff" : "Tổng nhân sự"}
+          value={totalEmployees}
+          iconBg="bg-[#F4F7FE]"
+          iconColor="text-[#4318FF]"
+        />
+        <StatCard
+          icon={UserCheck}
+          label={lang === "zh" ? "在职员工" : lang === "en" ? "Active" : "Đang làm việc"}
+          value={activeCount}
+          badgeText={totalEmployees > 0 ? `${Math.round((activeCount / totalEmployees) * 100)}%` : "0%"}
+          badgeType="success"
+          iconBg="bg-[#E6FAF5]"
+          iconColor="text-[#05CD99]"
+        />
+        <StatCard
+          icon={Award}
+          label={lang === "zh" ? "班长 / 组长" : lang === "en" ? "Shift & Team Leaders" : "Ca & Tổ trưởng"}
+          value={leaderCount}
+          badgeType="info"
+          iconBg="bg-[#F4F7FE]"
+          iconColor="text-[#4318FF]"
+        />
+        <StatCard
+          icon={Briefcase}
+          label={lang === "zh" ? "工人和技术员" : lang === "en" ? "Workers & Tech" : "Công nhân & Kỹ thuật"}
+          value={workerCount}
+          badgeType="warning"
+          iconBg="bg-[#FFF8E7]"
+          iconColor="text-[#FFB547]"
+        />
+      </div>
+
+      {/* Action Toolbar */}
+      <div className="flex items-center justify-between gap-3 flex-wrap pt-1">
         <Segmented
           value={tab}
           onChange={setTab}
           items={[
-            { key: "active", label: `${t("activeEmployees", lang)} (${employees.filter((e) => isActive(e)).length})` },
-            { key: "resigned", label: `${t("resignedEmployees", lang)} (${employees.filter((e) => !isActive(e)).length})` },
+            { key: "active", label: `${t("activeEmployees", lang)} (${activeCount})` },
+            { key: "resigned", label: `${t("resignedEmployees", lang)} (${employees.length - activeCount})` },
           ]}
         />
+        <div className="flex items-center gap-2.5 ml-auto">
+          <UndoRedoButtons canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
+          <AddActionButton
+            labelVi="Thêm nhân sự"
+            labelZh="新增员工"
+            labelEn="Add Employee"
+            onManualAdd={() => setForm({})}
+            onExcelAdd={() => setExcelOpen(true)}
+          />
+        </div>
       </div>
 
       <div className={`${card} overflow-hidden`}>
-        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-270px)]">
-          <table className="w-full text-sm border-separate border-spacing-0">
+        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-315px)]">
+          <table ref={tableRef} className="w-full text-sm border-separate border-spacing-0">
             <thead className="pe-thead text-sm sticky top-0 z-10 bg-[#F8FAFC] shadow-xs">
               <tr className="h-10">
-                <th className="px-3 py-2 text-center align-middle font-semibold text-ink text-sm whitespace-nowrap w-12 min-w-[50px] bg-[#F8FAFC]">
+                <th className="px-3 py-2 text-center align-middle font-bold text-black text-sm whitespace-nowrap w-12 min-w-[50px] bg-[#F8FAFC] border-l border-b border-r border-line">
                   STT
                 </th>
                 <SortableTh
@@ -318,7 +355,7 @@ export function EmployeesPage() {
                   filterValue={filters.vietnameseName}
                   onFilterChange={handleFilterChange}
                   data={tabEmployees}
-                  className="min-w-[150px]"
+                  className="min-w-[210px]"
                 />
                 <SortableTh
                   labelVi="Tên Trung"
@@ -355,7 +392,7 @@ export function EmployeesPage() {
                     className="min-w-[130px]"
                   />
                 )}
-                <th className="px-3 py-2 text-left align-middle font-semibold text-ink text-sm whitespace-nowrap min-w-[120px]">
+                <th className="px-3 py-2 text-left align-middle font-bold text-black text-sm whitespace-nowrap min-w-[120px] bg-[#F8FAFC] border-b border-r border-line">
                   {t("seniority", lang)}
                 </th>
                 <SortableTh
@@ -420,41 +457,41 @@ export function EmployeesPage() {
                   data={tabEmployees}
                   className="min-w-[170px]"
                 />
-                <th className="px-3 py-2 text-right align-middle font-semibold text-ink text-sm whitespace-nowrap min-w-[100px] bg-[#F8FAFC]">
+                <th className="px-3 py-2 text-center align-middle font-bold text-black text-sm whitespace-nowrap min-w-[100px] bg-[#F8FAFC] border-b border-r border-line">
                   {t("actions", lang)}
                 </th>
               </tr>
             </thead>
             <tbody>
               {filteredAndSortedList.map((e, idx) => (
-                <tr key={e.id} className="border-t border-line hover:bg-canvas">
-                  <td className="px-2 py-2 text-mute text-sm font-medium">
+                <tr key={e.id} className="hover:bg-canvas">
+                  <td className="px-2 py-2 text-center align-middle text-black font-semibold text-sm border-l border-b border-r border-line">
                     {idx + 1}
                   </td>
-                  <td className={`px-2 py-2 ${selCls(e.id, "employeeCode")}`} onClick={() => setSelected({ rowId: e.id, colKey: "employeeCode" })}>
+                  <td className={`px-2 py-2 align-middle border-b border-r border-line ${selCls(e.id, "employeeCode")}`} onClick={() => setSelected({ rowId: e.id, colKey: "employeeCode" })}>
                     <input
                       className={`${inputCls} v-input--sm v-input--ghost font-bold text-sm`}
                       value={e.employeeCode}
                       onChange={(ev) => updateEmployee(e.id, { employeeCode: ev.target.value })}
                     />
                   </td>
-                  <td className={`px-2 py-2 ${selCls(e.id, "vietnameseName")}`} onClick={() => setSelected({ rowId: e.id, colKey: "vietnameseName" })}>
+                  <td className={`px-2 py-2 align-middle min-w-[210px] border-b border-r border-line ${selCls(e.id, "vietnameseName")}`} onClick={() => setSelected({ rowId: e.id, colKey: "vietnameseName" })}>
                     <input
-                      className={`${inputCls} v-input--sm text-sm`}
+                      className={`${inputCls} v-input--sm text-sm font-medium`}
                       value={e.vietnameseName}
                       onChange={(ev) => updateEmployee(e.id, { vietnameseName: ev.target.value })}
                     />
                   </td>
-                  <td className={`px-2 py-2 ${selCls(e.id, "chineseName")}`} onClick={() => setSelected({ rowId: e.id, colKey: "chineseName" })}>
+                  <td className={`px-2 py-2 align-middle border-b border-r border-line ${selCls(e.id, "chineseName")}`} onClick={() => setSelected({ rowId: e.id, colKey: "chineseName" })}>
                     <input
                       className={`${inputCls} v-input--sm text-sm`}
-                      placeholder="—"
+                      placeholder=""
                       value={e.chineseName || ""}
                       onChange={(ev) => updateEmployee(e.id, { chineseName: ev.target.value })}
                     />
                   </td>
                
-                  <td className={`px-2 py-2 ${selCls(e.id, "joinDate")}`} onClick={() => setSelected({ rowId: e.id, colKey: "joinDate" })}>
+                  <td className={`px-2 py-2 align-middle border-b border-r border-line ${selCls(e.id, "joinDate")}`} onClick={() => setSelected({ rowId: e.id, colKey: "joinDate" })}>
                     <input
                       type="date"
                       className={`${inputCls} v-input--sm text-sm`}
@@ -463,7 +500,7 @@ export function EmployeesPage() {
                     />
                   </td>
                   {tab === "resigned" && (
-                    <td className={`px-2 py-2 ${selCls(e.id, "resignDate")}`} onClick={() => setSelected({ rowId: e.id, colKey: "resignDate" })}>
+                    <td className={`px-2 py-2 align-middle border-b border-r border-line ${selCls(e.id, "resignDate")}`} onClick={() => setSelected({ rowId: e.id, colKey: "resignDate" })}>
                       <input
                         type="date"
                         className={`${inputCls} v-input--sm text-sm`}
@@ -472,10 +509,10 @@ export function EmployeesPage() {
                       />
                     </td>
                   )}
-                  <td className="px-2 py-2 text-sm text-ink whitespace-nowrap">
-                    {formatSeniority(e.joinDate, e.resignDate, lang) || "—"}
+                  <td className="px-2 py-2 text-sm text-ink whitespace-nowrap align-middle border-b border-r border-line">
+                    {formatSeniority(e.joinDate, e.resignDate, lang) || ""}
                   </td>
-                  <td className={`px-2 py-2 min-w-[175px] ${selCls(e.id, "position")}`} onClick={() => setSelected({ rowId: e.id, colKey: "position" })}>
+                  <td className={`px-2 py-2 align-middle min-w-[175px] border-b border-r border-line ${selCls(e.id, "position")}`} onClick={() => setSelected({ rowId: e.id, colKey: "position" })}>
                     <select
                       className={`${inputCls} v-input--sm text-sm w-full font-medium`}
                       value={e.position}
@@ -489,7 +526,7 @@ export function EmployeesPage() {
                     </select>
                   </td>
                   
-                  <td className={`px-2 py-2 min-w-[135px] ${selCls(e.id, "status")}`} onClick={() => setSelected({ rowId: e.id, colKey: "status" })}>
+                  <td className={`px-2 py-2 align-middle min-w-[135px] border-b border-r border-line ${selCls(e.id, "status")}`} onClick={() => setSelected({ rowId: e.id, colKey: "status" })}>
                     <select
                       className={`border border-transparent px-2 py-1 text-sm font-bold cursor-pointer rounded-xs w-full ${EMP_STATUS_COLOR[e.status] || ""}`}
                       value={e.status}
@@ -502,32 +539,32 @@ export function EmployeesPage() {
                       ))}
                     </select>
                   </td>
-                     <td className={`px-2 py-2 ${selCls(e.id, "birthYear")}`} onClick={() => setSelected({ rowId: e.id, colKey: "birthYear" })}>
+                  <td className={`px-2 py-2 align-middle border-b border-r border-line ${selCls(e.id, "birthYear")}`} onClick={() => setSelected({ rowId: e.id, colKey: "birthYear" })}>
                     <input
                       className={`${inputCls} v-input--sm text-sm`}
-                      placeholder="—"
+                      placeholder=""
                       value={e.birthYear || ""}
                       onChange={(ev) => updateEmployee(e.id, { birthYear: ev.target.value })}
                     />
                   </td>
-                  <td className={`px-2 py-2 ${selCls(e.id, "phone")}`} onClick={() => setSelected({ rowId: e.id, colKey: "phone" })}>
+                  <td className={`px-2 py-2 align-middle border-b border-r border-line ${selCls(e.id, "phone")}`} onClick={() => setSelected({ rowId: e.id, colKey: "phone" })}>
                     <input
                       className={`${inputCls} v-input--sm text-sm`}
-                      placeholder="—"
+                      placeholder=""
                       value={e.phone || ""}
                       onChange={(ev) => updateEmployee(e.id, { phone: ev.target.value })}
                     />
                   </td>
-                  <td className={`px-2 py-2 ${selCls(e.id, "address")}` } onClick={() => setSelected({ rowId: e.id, colKey: "address" })}>
+                  <td className={`px-2 py-2 align-middle border-b border-r border-line ${selCls(e.id, "address")}`} onClick={() => setSelected({ rowId: e.id, colKey: "address" })}>
                     <input
                       className={`${inputCls} v-input--sm text-sm`}
-                      placeholder="—"
+                      placeholder=""
                       value={e.address || ""}
                       onChange={(ev) => updateEmployee(e.id, { address: ev.target.value })}
                     />
                   </td>
-                  <td className="px-2 py-2 text-right">
-                    <div className="flex justify-end gap-1">
+                  <td className="px-2 py-2 text-center align-middle border-b border-r border-line">
+                    <div className="flex justify-center gap-1">
                       <button
                         type="button"
                         className={`${btnIcon} rounded-xs`}

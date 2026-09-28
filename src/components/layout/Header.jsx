@@ -61,7 +61,7 @@ export function Header({ page, setPage }) {
 
       <div className="flex items-center gap-2 sm:gap-2.5 flex-nowrap shrink-0 overflow-x-auto">
         {/* Language Switcher */}
-        <div className="flex h-10 items-center bg-white p-1 rounded-xl border border-line shadow-sm shrink-0">
+        <div className="flex h-10 items-center bg-white p-1 rounded-full border border-line shadow-xs shrink-0">
           {LANGUAGES.map((l) => {
             const isActive = lang === l.code;
             return (
@@ -69,14 +69,13 @@ export function Header({ page, setPage }) {
                 key={l.code}
                 type="button"
                 onClick={() => setLang && setLang(l.code)}
-                className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                className={`flex items-center justify-center px-3 py-1.5 text-xs font-bold rounded-full transition-all cursor-pointer ${
                   isActive
-                    ? "bg-[#4318FF] text-white shadow-sm"
+                    ? "bg-[#4318FF] text-white shadow-xs"
                     : "text-body hover:text-ink hover:bg-canvas"
                 }`}
                 title={l.label}
               >
-                <span>{l.flag}</span>
                 <span>{l.short}</span>
               </button>
             );
@@ -84,7 +83,7 @@ export function Header({ page, setPage }) {
         </div>
 
         <div className="relative">
-          <label className="v-search">
+          <label className="v-search shadow-xs">
             <Search size={14} />
             <input
               ref={searchRef}
@@ -106,7 +105,7 @@ export function Header({ page, setPage }) {
           </label>
         </div>
 
-        <div className="flex h-10 items-center gap-2 rounded-xl border border-line bg-white px-3 text-xs font-bold shadow-sm shrink-0">
+        <div className="flex h-10 items-center gap-2 rounded-full border border-line bg-white px-3.5 text-xs font-bold shadow-xs shrink-0">
           {sync?.status === "connected" && (
             <span className="flex items-center gap-1.5 text-ok" title="Đã kết nối cơ sở dữ liệu Supabase">
               <span className="h-2 w-2 rounded-full bg-ok" /> Supabase
@@ -133,17 +132,17 @@ export function Header({ page, setPage }) {
           )}
         </div>
 
-        <div className="flex h-10 items-center gap-1.5 rounded-xl border border-line bg-white px-3 text-sm shadow-sm shrink-0">
+        <div className="flex h-10 items-center gap-1.5 rounded-full border border-line bg-white px-3.5 text-xs shadow-xs shrink-0">
           <span className="text-mute font-normal">{roleLabel}:</span>
-          <span className="text-brand font-bold">{role}</span>
+          <span className="text-brand font-bold uppercase">{role}</span>
         </div>
 
-        <div className="v-avatar-head" title={(user && (user.name || user.username)) || user}>
+        <div className="v-avatar-head shadow-xs" title={(user && (user.name || user.username)) || user}>
           {((user && (user.name || user.username)) || user || "U").charAt(0).toUpperCase()}
         </div>
 
         <button
-          className={`${btnSecondary} v-btn--icon`}
+          className="w-10 h-10 rounded-full flex items-center justify-center bg-white border border-line hover:bg-[#FFF5F5] hover:text-[#EE5D50] hover:border-[#EE5D50]/30 text-body transition-colors shadow-xs cursor-pointer"
           title={logoutLabel}
           aria-label={logoutLabel}
           onClick={logout}

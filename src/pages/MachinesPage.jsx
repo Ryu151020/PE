@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Pencil, Redo2, Trash2, Undo2 } from "lucide-react";
+import { CheckCircle2, Cpu, Layers, Pencil, Trash2, Wrench } from "lucide-react";
 import { MoldForm } from "../components/molds/MoldForm";
 import { AddActionButton } from "../components/ui/AddActionButton";
+import { UndoRedoButtons } from "../components/ui/UndoRedoButtons";
+import { StatCard } from "../components/ui/StatCard";
 import { ExcelImportModal } from "../components/ui/ExcelImportModal";
 import { SearchBox } from "../components/ui/Fields";
 import { PageHeader } from "../components/ui/PageHeader";
@@ -134,6 +136,19 @@ export function MachinesPage() {
 
   const isSel = (rowId, colKey) => selected && selected.rowId === rowId && selected.colKey === colKey;
   const selCls = (rowId, colKey) => `${isSel(rowId, colKey) ? "ring-2 ring-inset ring-brand bg-brand-tint" : ""}`;
+  const tableRef = useRef(null);
+
+  useEffect(() => {
+    if (!selected) return;
+    const handleOutside = (e) => {
+      if (tableRef.current && !tableRef.current.contains(e.target)) {
+        if (e.target && e.target.closest && (e.target.closest('[role="dialog"]') || e.target.closest('.fixed'))) return;
+        setSelected(null);
+      }
+    };
+    document.addEventListener("mousedown", handleOutside);
+    return () => document.removeEventListener("mousedown", handleOutside);
+  }, [selected]);
 
   useEffect(() => {
     const onKey = (e) => {
@@ -164,49 +179,82 @@ export function MachinesPage() {
     pushToast(`Đã thêm mới ${newMolds.length} khuôn từ Excel / 已新增`, "success");
   };
 
+  const totalMolds = molds.length;
+  const readyMolds = useMemo(
+    () => molds.filter((m) => m.status === "Sẵn sàng" || m.status === "可用").length,
+    [molds]
+  );
+  const inUseMolds = useMemo(
+    () => molds.filter((m) => m.status === "Đang dùng" || m.status === "使用中").length,
+    [molds]
+  );
+  const maintenanceMolds = useMemo(
+    () => molds.filter((m) => m.status === "Bảo trì" || m.status === "维护中" || String(m.status).includes("Bảo") || String(m.status).includes("修")).length,
+    [molds]
+  );
+
   return (
-    <div className="space-y-5">
-      <div className="sticky top-0 z-20 bg-[#F4F7FE] pb-2">
-        <PageHeader
-          vi="Dữ liệu khuôn máy"
-          zh="模具数据"
-          actions={
-            <>
-              <div className="flex h-10 items-center gap-1 border border-line bg-white px-2.5 rounded-xl shadow-xs">
-                <button
-                  type="button"
-                  className="p-1.5 rounded-lg text-body hover:text-brand hover:bg-canvas transition-colors disabled:opacity-40 disabled:hover:text-inherit disabled:hover:bg-transparent"
-                  disabled={!canUndo}
-                  onClick={undo}
-                  title={t("undo", lang)}
-                >
-                  <Undo2 size={16} />
-                </button>
-                <button
-                  type="button"
-                  className="p-1.5 rounded-lg text-body hover:text-brand hover:bg-canvas transition-colors disabled:opacity-40 disabled:hover:text-inherit disabled:hover:bg-transparent"
-                  disabled={!canRedo}
-                  onClick={redo}
-                  title={t("redo", lang)}
-                >
-                  <Redo2 size={16} />
-                </button>
-              </div>
-              <AddActionButton
-                labelVi="Thêm khuôn"
-                labelZh="新增模具"
-                labelEn="Add Mold"
-                onManualAdd={() => setMoldForm({})}
-                onExcelAdd={() => setExcelOpen(true)}
-              />
-            </>
-          }
+    <div className="space-y-4">
+      {/* Venus Stat Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <StatCard
+          icon={Layers}
+          label={lang === "zh" ? "模具总数" : lang === "en" ? "Total Molds" : "Tổng số khuôn"}
+          value={totalMolds}
+          iconBg="bg-[#F4F7FE]"
+          iconColor="text-[#4318FF]"
+        />
+        <StatCard
+          icon={CheckCircle2}
+          label={lang === "zh" ? "可用模具" : lang === "en" ? "Available" : "Sẵn sàng"}
+          value={readyMolds}
+          badgeText={totalMolds > 0 ? `${Math.round((readyMolds / totalMolds) * 100)}%` : "0%"}
+          badgeType="success"
+          iconBg="bg-[#E6FAF5]"
+          iconColor="text-[#05CD99]"
+        />
+        <StatCard
+          icon={Cpu}
+          label={lang === "zh" ? "使用中" : lang === "en" ? "In Production" : "Đang dùng"}
+          value={inUseMolds}
+          badgeType="info"
+          iconBg="bg-[#F4F7FE]"
+          iconColor="text-[#4318FF]"
+        />
+        <StatCard
+          icon={Wrench}
+          label={lang === "zh" ? "维护/检修" : lang === "en" ? "Maintenance" : "Bảo trì / Sửa chữa"}
+          value={maintenanceMolds}
+          badgeType={maintenanceMolds > 0 ? "warning" : "neutral"}
+          iconBg="bg-[#FFF8E7]"
+          iconColor="text-[#FFB547]"
         />
       </div>
 
+      {/* Action Toolbar */}
+      <div className="flex items-center justify-between gap-3 flex-wrap pt-1">
+        <div className="text-xs font-bold text-mute">
+          {lang === "zh"
+            ? `共 ${filteredMolds.length} / ${totalMolds} 套模具`
+            : lang === "en"
+            ? `Showing ${filteredMolds.length} / ${totalMolds} molds`
+            : `Hiển thị ${filteredMolds.length} / ${totalMolds} khuôn`}
+        </div>
+        <div className="flex items-center gap-2.5 ml-auto">
+          <UndoRedoButtons canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
+          <AddActionButton
+            labelVi="Thêm khuôn"
+            labelZh="新增模具"
+            labelEn="Add Mold"
+            onManualAdd={() => setMoldForm({})}
+            onExcelAdd={() => setExcelOpen(true)}
+          />
+        </div>
+      </div>
+
       <div className={`${card} overflow-hidden bg-white`}>
-        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-215px)]">
-          <table className="w-full table-fixed text-sm border-separate border-spacing-0">
+        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-315px)]">
+          <table ref={tableRef} className="w-full table-fixed text-sm border-separate border-spacing-0">
             <colgroup>
               <col className="w-[8%]" />
               <col className="w-[28%]" />
@@ -216,7 +264,7 @@ export function MachinesPage() {
             </colgroup>
             <thead className="pe-thead text-sm sticky top-0 z-10 bg-[#F8FAFC] shadow-xs">
               <tr className="h-10">
-                <th className="px-3 py-2 text-center align-middle font-semibold text-ink text-sm whitespace-nowrap bg-[#F8FAFC]">
+                <th className="px-3 py-2 text-center align-middle font-bold text-black text-sm whitespace-nowrap bg-[#F8FAFC] border-l border-b border-r border-line">
                   {t("stt", lang)}
                 </th>
                 <SortableTh
@@ -229,6 +277,7 @@ export function MachinesPage() {
                   filterValue={filters.moldName}
                   onFilterChange={handleFilterChange}
                   data={molds}
+                  center={true}
                 />
                 <SortableTh
                   labelVi="Trạng thái"
@@ -240,6 +289,7 @@ export function MachinesPage() {
                   filterValue={filters.status}
                   onFilterChange={handleFilterChange}
                   data={molds}
+                  center={true}
                   getDisplayValue={(m) => getMoldStatusLabel(m.status, lang)}
                 />
                 <SortableTh
@@ -252,57 +302,60 @@ export function MachinesPage() {
                   filterValue={filters.notes}
                   onFilterChange={handleFilterChange}
                   data={molds}
+                  center={true}
                 />
-                <th className="px-3 py-2 text-right align-middle font-semibold text-ink text-sm whitespace-nowrap bg-[#F8FAFC]">
+                <th className="px-3 py-2 text-center align-middle font-bold text-black text-sm whitespace-nowrap bg-[#F8FAFC] border-b border-r border-line">
                   {t("actions", lang)}
                 </th>
               </tr>
             </thead>
             <tbody>
               {filteredMolds.map((m, i) => (
-                <tr key={m.id} className="border-t border-line hover:bg-canvas">
-                  <td className="px-3 py-2 text-mute text-sm font-medium">{i + 1}</td>
+                <tr key={m.id} className="hover:bg-canvas">
+                  <td className="px-3 py-2 text-center align-middle text-black font-semibold text-sm border-l border-b border-r border-line">{i + 1}</td>
                   <td
-                    className={`px-3 py-2 ${selCls(m.id, "moldName")}`}
+                    className={`px-3 py-2 text-center align-middle border-b border-r border-line ${selCls(m.id, "moldName")}`}
                     onClick={() => setSelected({ rowId: m.id, colKey: "moldName" })}
                   >
                     <input
-                      className={`${inputCls} v-input--sm v-input--ghost font-bold text-sm`}
+                      className={`${inputCls} v-input--sm v-input--ghost font-bold text-sm text-center`}
                       value={m.moldName}
                       onChange={(e) => updateMold(m.id, { moldName: e.target.value })}
                     />
                   </td>
                   <td
-                    className={`px-3 py-2 ${selCls(m.id, "status")}`}
+                    className={`px-3 py-2 text-center align-middle border-b border-r border-line ${selCls(m.id, "status")}`}
                     onClick={() => setSelected({ rowId: m.id, colKey: "status" })}
                   >
-                    <select
-                      className={`border border-transparent px-2.5 py-1.5 text-sm font-bold cursor-pointer rounded-xs ${
-                        MOLD_STATUS_COLOR[m.status] || ""
-                      }`}
-                      value={m.status}
-                      onChange={(e) => updateMold(m.id, { status: e.target.value })}
-                    >
-                      {MOLD_STATUS_DEFS.map((s) => (
-                        <option key={s.vi} value={s.vi}>
-                          {getMoldStatusLabel(s.vi, lang)}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="flex justify-center">
+                      <select
+                        className={`border border-transparent px-2.5 py-1.5 text-sm font-bold cursor-pointer rounded-xs ${
+                          MOLD_STATUS_COLOR[m.status] || ""
+                        }`}
+                        value={m.status}
+                        onChange={(e) => updateMold(m.id, { status: e.target.value })}
+                      >
+                        {MOLD_STATUS_DEFS.map((s) => (
+                          <option key={s.vi} value={s.vi}>
+                            {getMoldStatusLabel(s.vi, lang)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </td>
                   <td
-                    className={`px-3 py-2 ${selCls(m.id, "notes")}`}
+                    className={`px-3 py-2 text-center align-middle border-b border-r border-line ${selCls(m.id, "notes")}`}
                     onClick={() => setSelected({ rowId: m.id, colKey: "notes" })}
                   >
                     <input
-                      className={`${inputCls} v-input--sm v-input--ghost text-sm`}
-                      placeholder="—"
+                      className={`${inputCls} v-input--sm v-input--ghost text-sm text-center`}
+                      placeholder=""
                       value={m.notes || ""}
                       onChange={(e) => updateMold(m.id, { notes: e.target.value })}
                     />
                   </td>
-                  <td className="px-3 py-2">
-                    <div className="flex justify-end gap-1">
+                  <td className="px-3 py-2 text-center align-middle border-b border-r border-line">
+                    <div className="flex justify-center gap-1">
                       <button
                         type="button"
                         className={`${btnIcon} rounded-xs`}
