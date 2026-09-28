@@ -16,8 +16,10 @@ export function ScheduleToolbar({ editable, planStatus, isDirty, canUndo, canRed
       {isDirty && <span className="text-xs text-warn font-medium">{t("unsavedWarning", lang)}</span>}
       <div className="ml-auto flex items-center gap-2">
         {editable && (<>
-          <button className={btnGhost} disabled={!canUndo} onClick={onUndo} title={t("undo", lang)}><Undo2 size={15} /></button>
-          <button className={btnGhost} disabled={!canRedo} onClick={onRedo} title={t("redo", lang)}><Redo2 size={15} /></button>
+          <div className="flex h-10 items-center gap-1 border border-line bg-white px-2.5 rounded-xl shadow-xs">
+            <button className="p-1.5 rounded-lg text-body hover:text-brand hover:bg-canvas transition-colors disabled:opacity-40 disabled:hover:text-inherit disabled:hover:bg-transparent" disabled={!canUndo} onClick={onUndo} title={t("undo", lang)}><Undo2 size={15} /></button>
+            <button className="p-1.5 rounded-lg text-body hover:text-brand hover:bg-canvas transition-colors disabled:opacity-40 disabled:hover:text-inherit disabled:hover:bg-transparent" disabled={!canRedo} onClick={onRedo} title={t("redo", lang)}><Redo2 size={15} /></button>
+          </div>
           <button className={`${btnGhost} text-bad`} onClick={onClearAll} disabled={isLocked || isViewer} title={t("clearAll", lang)}>
             <Trash2 size={15} /> {t("clearAll", lang)}
           </button>

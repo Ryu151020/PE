@@ -21,14 +21,14 @@ import { useTableHistory } from "../lib/useTableHistory";
 import { getPositionLabel, getStatusLabel, t } from "../lib/i18n";
 
 export function EmployeesPage() {
-  const { db, setDb, pushToast, confirmAction, lang = "vi" } = useApp();
+  const { db, setDb, pushToast, confirmAction, lang = "vi", searchQuery = "" } = useApp();
+  const query = searchQuery;
   const [selected, setSelected] = useState(null);
   const clipRef = useRef(null);
   const machinesById = useMemo(() => byId(db.machines), [db.machines]);
   const ordersById = useMemo(() => byId(db.orders), [db.orders]);
   const moldsById = useMemo(() => byId(db.molds), [db.molds]);
   const [tab, setTab] = useState("active");
-  const [query, setQuery] = useState("");
   const [positionFilter, setPositionFilter] = useState("");
   const [joinRange, setJoinRange] = useState(null);
   const [resignRange, setResignRange] = useState(null);
@@ -249,11 +249,10 @@ export function EmployeesPage() {
           zh="人员管理"
           actions={
             <>
-              <SearchBox value={query} onChange={setQuery} placeholder={t("searchEmpPlaceholder", lang)} />
-              <div className="flex items-center gap-1 border border-line bg-white px-2 py-1 rounded-xs">
+              <div className="flex h-10 items-center gap-1 border border-line bg-white px-2.5 rounded-xl shadow-xs">
                 <button
                   type="button"
-                  className="p-1 hover:text-[#2051A3] disabled:opacity-40 disabled:hover:text-inherit"
+                  className="p-1.5 rounded-lg text-body hover:text-brand hover:bg-canvas transition-colors disabled:opacity-40 disabled:hover:text-inherit disabled:hover:bg-transparent"
                   disabled={!canUndo}
                   onClick={undo}
                   title={t("undo", lang)}
@@ -262,7 +261,7 @@ export function EmployeesPage() {
                 </button>
                 <button
                   type="button"
-                  className="p-1 hover:text-[#2051A3] disabled:opacity-40 disabled:hover:text-inherit"
+                  className="p-1.5 rounded-lg text-body hover:text-brand hover:bg-canvas transition-colors disabled:opacity-40 disabled:hover:text-inherit disabled:hover:bg-transparent"
                   disabled={!canRedo}
                   onClick={redo}
                   title={t("redo", lang)}
@@ -474,7 +473,7 @@ export function EmployeesPage() {
                     </td>
                   )}
                   <td className="px-2 py-2 text-sm text-ink whitespace-nowrap">
-                    {formatSeniority(e.joinDate, e.resignDate) || "—"}
+                    {formatSeniority(e.joinDate, e.resignDate, lang) || "—"}
                   </td>
                   <td className={`px-2 py-2 min-w-[175px] ${selCls(e.id, "position")}`} onClick={() => setSelected({ rowId: e.id, colKey: "position" })}>
                     <select

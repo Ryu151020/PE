@@ -367,7 +367,9 @@ export function ReportsPage() {
               <tbody>
                 {machineSummary.map((r) => (
                   <tr key={r.machine.id} className="border-t border-line">
-                    <td className="truncate px-2 py-2 font-medium text-ink">{r.machine.machineName}</td>
+                    <td className="truncate px-2 py-2 font-medium text-ink">
+                      {String(r.machine.machineNumber ?? r.machine.machineName?.replace(/\D/g, "")).padStart(2, "0")}
+                    </td>
                     <td className="px-2 py-2 text-right">{r.openDays}</td>
                     <td className="px-2 py-2 text-right">{r.stoppedDays}</td>
                     <td className="px-2 py-2 text-right">{r.orderCount}</td>

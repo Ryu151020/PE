@@ -31,8 +31,11 @@ export default function App() {
   const path = location.pathname.replace(/^\//, "");
   const page = path === "" || path === "schedule" ? "schedule" : path;
 
+  const [searchQuery, setSearchQuery] = useState("");
+
   const setPage = useCallback(
     (newPage) => {
+      setSearchQuery("");
       if (newPage === "schedule") {
         navigate("/");
       } else {
@@ -61,7 +64,7 @@ export default function App() {
     localStorage.setItem("pe_lang", newLang);
   }, []);
 
-  const ctx = { db, setDb, role, setRole, toasts, pushToast, dismissToast, confirmAction, sync, user, logout, lang, setLang };
+  const ctx = { db, setDb, role, setRole, toasts, pushToast, dismissToast, confirmAction, sync, user, logout, lang, setLang, searchQuery, setSearchQuery };
 
   return (
     <AppCtx.Provider value={ctx}>

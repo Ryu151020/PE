@@ -100,7 +100,7 @@ export function ScheduleRow({ machine, entry, molds, orders, ordersById, editabl
             searchPlaceholder="Tìm đơn... / 搜索..."
           />
         ) : (
-          <span className="text-sm text-body">{currentOrder ? orderLabel(currentOrder) : "—"}</span>
+          <span className="text-sm font-bold text-ink px-1">{currentOrder ? orderLabel(currentOrder) : "—"}</span>
         )}
       </td>
       <td className="border-r border-b border-line px-2 py-1.5 align-middle bg-gray-50/50">

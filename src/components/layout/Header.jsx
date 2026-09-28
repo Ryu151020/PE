@@ -6,32 +6,9 @@ import { NAV_ITEMS } from "../../lib/nav";
 import { btnSecondary } from "../../lib/styles";
 
 export function Header({ page, setPage }) {
-  const { db, role, user, logout, sync, lang = "vi", setLang } = useApp();
-  const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(false);
+  const { db, role, user, logout, sync, lang = "vi", setLang, searchQuery = "", setSearchQuery } = useApp();
   const searchRef = useRef(null);
   const nav = NAV_ITEMS.find((n) => n.key === page) || NAV_ITEMS[0];
-
-  const results = useMemo(() => {
-    if (!query.trim()) return [];
-    const q = query.toLowerCase();
-    const empType = t("position", lang, "Nhân sự");
-    const moldType = t("mold", lang, "Khuôn");
-    const ordType = t("order", lang, "Đơn hàng");
-    const emp = db.employees
-      .filter((e) => e.vietnameseName.toLowerCase().includes(q) || e.employeeCode.toLowerCase().includes(q))
-      .slice(0, 4)
-      .map((e) => ({ type: empType, label: `${e.vietnameseName} (${e.employeeCode})`, page: "employees" }));
-    const mold = db.molds
-      .filter((m) => m.moldName.toLowerCase().includes(q))
-      .slice(0, 4)
-      .map((m) => ({ type: moldType, label: m.moldName, page: "machines" }));
-    const ord = db.orders
-      .filter((o) => o.orderCode.toLowerCase().includes(q))
-      .slice(0, 4)
-      .map((o) => ({ type: ordType, label: o.orderCode, page: "orders" }));
-    return [...emp, ...mold, ...ord].slice(0, 10);
-  }, [query, db, lang]);
 
   // "/" focuses the search field from anywhere (unless the user is already typing)
   useEffect(() => {
@@ -50,10 +27,17 @@ export function Header({ page, setPage }) {
   const greeting = t("greeting", lang);
   const roleLabel = t("role", lang);
   const logoutLabel = t("logout", lang);
-  const searchPlaceholder = t("searchHeaderPlaceholder", lang);
+
+  const searchPlaceholder = useMemo(() => {
+    if (page === "orders") return t("searchOrderPlaceholder", lang);
+    if (page === "machines") return t("searchMoldPlaceholder", lang);
+    if (page === "employees") return t("searchEmpPlaceholder", lang);
+    if (page === "schedule") return lang === "zh" ? "搜索员工、机器、订单..." : lang === "en" ? "Search staff, machine, order..." : "Tìm nhân viên, máy, đơn hàng...";
+    return t("search", lang);
+  }, [page, lang]);
 
   return (
-    <header className="relative z-30 flex flex-wrap items-end justify-between gap-x-6 gap-y-4 pt-[30px] px-[30px] pb-6">
+    <header className="relative z-30 flex items-center justify-between gap-x-4 gap-y-3 pt-5 px-6 pb-4 flex-wrap lg:flex-nowrap">
       <div className="flex w-full items-center gap-1.5 md:hidden">
         {NAV_ITEMS.map(({ key, icon: Icon }) => (
           <button
@@ -66,18 +50,18 @@ export function Header({ page, setPage }) {
         ))}
       </div>
 
-      <div className="min-w-0">
+      <div className="min-w-0 shrink-0">
         <div className="text-sm font-bold text-[#707EAE]">
           {greeting}, {(user && (user.name || user.username)) || user || role}
         </div>
-        <h1 className="text-[32px] leading-[40px] font-bold text-[#2B3674] tracking-tight">
+        <h1 className="text-[28px] lg:text-[32px] leading-[36px] lg:leading-[40px] font-bold text-[#2B3674] tracking-tight">
           {pageTitle}
         </h1>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-2.5 flex-nowrap shrink-0 overflow-x-auto">
         {/* Language Switcher */}
-        <div className="flex h-11 items-center bg-white p-1 rounded-xl border border-line shadow-sm">
+        <div className="flex h-10 items-center bg-white p-1 rounded-xl border border-line shadow-sm shrink-0">
           {LANGUAGES.map((l) => {
             const isActive = lang === l.code;
             return (
@@ -85,7 +69,7 @@ export function Header({ page, setPage }) {
                 key={l.code}
                 type="button"
                 onClick={() => setLang && setLang(l.code)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                className={`flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                   isActive
                     ? "bg-[#4318FF] text-white shadow-sm"
                     : "text-body hover:text-ink hover:bg-canvas"
@@ -105,37 +89,24 @@ export function Header({ page, setPage }) {
             <input
               ref={searchRef}
               placeholder={searchPlaceholder}
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setOpen(true);
-              }}
-              onFocus={() => setOpen(true)}
-              onBlur={() => setTimeout(() => setOpen(false), 150)}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery && setSearchQuery(e.target.value)}
             />
-            <span className="v-kbd">/</span>
+            {searchQuery ? (
+              <button
+                type="button"
+                className="absolute right-3 text-mute hover:text-ink text-xs font-bold"
+                onClick={() => setSearchQuery && setSearchQuery("")}
+              >
+                ✕
+              </button>
+            ) : (
+              <span className="v-kbd">/</span>
+            )}
           </label>
-          {open && results.length > 0 && (
-            <div className="v-menu v-menu--left w-full min-w-[280px]">
-              {results.map((r, i) => (
-                <button
-                  key={i}
-                  className="v-menu-item"
-                  onMouseDown={() => {
-                    setPage(r.page);
-                    setQuery("");
-                    setOpen(false);
-                  }}
-                >
-                  <span className="font-bold text-ink">{r.label}</span>
-                  <span className="text-sm">{r.type}</span>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
-        <div className="flex h-11 items-center gap-2 rounded-xs border border-line bg-white px-3.5 text-xs font-bold shadow-sm">
+        <div className="flex h-10 items-center gap-2 rounded-xl border border-line bg-white px-3 text-xs font-bold shadow-sm shrink-0">
           {sync?.status === "connected" && (
             <span className="flex items-center gap-1.5 text-ok" title="Đã kết nối cơ sở dữ liệu Supabase">
               <span className="h-2 w-2 rounded-full bg-ok" /> Supabase
@@ -162,7 +133,7 @@ export function Header({ page, setPage }) {
           )}
         </div>
 
-        <div className="flex h-11 items-center gap-1.5 rounded-xs border border-line bg-white px-3.5 text-sm shadow-sm">
+        <div className="flex h-10 items-center gap-1.5 rounded-xl border border-line bg-white px-3 text-sm shadow-sm shrink-0">
           <span className="text-mute font-normal">{roleLabel}:</span>
           <span className="text-brand font-bold">{role}</span>
         </div>

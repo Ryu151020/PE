@@ -54,7 +54,7 @@ export function EmployeeDetailDrawer({ employee, onClose, machinesById, ordersBy
             <span className="text-mute">{t("resignDate", lang)}</span>
             <span className="text-ink font-medium">{employee.resignDate || "—"}</span>
             <span className="text-mute">{t("seniority", lang)}</span>
-            <span className="text-ink font-medium">{formatSeniority(employee.joinDate, employee.resignDate)}</span>
+            <span className="text-ink font-medium">{formatSeniority(employee.joinDate, employee.resignDate, lang)}</span>
             {employee.resignReason && (
               <>
                 <span className="text-mute">{lang === "zh" ? "离职原因" : lang === "en" ? "Resign Reason" : "Lý do nghỉ"}</span>

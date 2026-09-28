@@ -210,6 +210,15 @@ export const MACHINE_STATUS_TRANSLATIONS = {
   "Làm hàng mẫu": { vi: "Làm hàng mẫu", zh: "打样", en: "Sampling" },
 };
 
+/* Order status dictionary helper */
+export const ORDER_STATUS_TRANSLATIONS = {
+  open: { vi: "Đang sản xuất", zh: "生产中", en: "In Production" },
+  done: { vi: "Đã hoàn thiện", zh: "已完成", en: "Completed" },
+  "Đang sản xuất": { vi: "Đang sản xuất", zh: "生产中", en: "In Production" },
+  "Đã hoàn thiện": { vi: "Đã hoàn thiện", zh: "已完成", en: "Completed" },
+  "Đang xử lý": { vi: "Đang sản xuất", zh: "生产中", en: "In Production" },
+};
+
 /* Mold status dictionary helper */
 export const MOLD_STATUS_TRANSLATIONS = {
   "Sẵn sàng": { vi: "Sẵn sàng", zh: "可用", en: "Ready" },
@@ -302,4 +311,9 @@ export function getPlanStatusLabel(status, lang = "vi") {
 
 export function getResignReasonLabel(reason, lang = "vi") {
   return RESIGN_REASON_TRANSLATIONS[reason]?.[lang] || reason;
+}
+
+export function getOrderStatusLabel(status, lang = "vi") {
+  const key = status === true || status === "done" ? "done" : "open";
+  return ORDER_STATUS_TRANSLATIONS[key]?.[lang] || (key === "done" ? "Đã hoàn thiện" : "Đang sản xuất");
 }

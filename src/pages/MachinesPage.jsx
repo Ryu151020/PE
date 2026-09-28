@@ -14,8 +14,8 @@ import { SortableTh } from "../components/ui/SortableTh";
 import { getMoldStatusLabel, t } from "../lib/i18n";
 
 export function MachinesPage() {
-  const { db, setDb, pushToast, confirmAction, lang = "vi" } = useApp();
-  const [query, setQuery] = useState("");
+  const { db, setDb, pushToast, confirmAction, lang = "vi", searchQuery = "" } = useApp();
+  const query = searchQuery;
   const [moldForm, setMoldForm] = useState(null);
   const [excelOpen, setExcelOpen] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -172,11 +172,10 @@ export function MachinesPage() {
           zh="模具数据"
           actions={
             <>
-              <SearchBox value={query} onChange={setQuery} placeholder={t("searchMoldPlaceholder", lang)} />
-              <div className="flex items-center gap-1 border border-line bg-white px-2 py-1 rounded-xs">
+              <div className="flex h-10 items-center gap-1 border border-line bg-white px-2.5 rounded-xl shadow-xs">
                 <button
                   type="button"
-                  className="p-1 hover:text-[#2051A3] disabled:opacity-40 disabled:hover:text-inherit"
+                  className="p-1.5 rounded-lg text-body hover:text-brand hover:bg-canvas transition-colors disabled:opacity-40 disabled:hover:text-inherit disabled:hover:bg-transparent"
                   disabled={!canUndo}
                   onClick={undo}
                   title={t("undo", lang)}
@@ -185,7 +184,7 @@ export function MachinesPage() {
                 </button>
                 <button
                   type="button"
-                  className="p-1 hover:text-[#2051A3] disabled:opacity-40 disabled:hover:text-inherit"
+                  className="p-1.5 rounded-lg text-body hover:text-brand hover:bg-canvas transition-colors disabled:opacity-40 disabled:hover:text-inherit disabled:hover:bg-transparent"
                   disabled={!canRedo}
                   onClick={redo}
                   title={t("redo", lang)}
@@ -286,7 +285,7 @@ export function MachinesPage() {
                     >
                       {MOLD_STATUS_DEFS.map((s) => (
                         <option key={s.vi} value={s.vi}>
-                          {s.vi} / {s.zh}
+                          {getMoldStatusLabel(s.vi, lang)}
                         </option>
                       ))}
                     </select>

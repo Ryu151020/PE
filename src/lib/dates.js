@@ -19,11 +19,22 @@ export const monthsBetween = (a, b) => {
 export const TODAY_KEY = toKey(new Date());
 
  // always the person's real "today" — seed data anchors to this
-export const formatSeniority = (join, end) => {
+export const formatSeniority = (join, end, lang = "vi") => {
   if (!join) return "—";
   const months = monthsBetween(join, end || TODAY_KEY);
   const y = Math.floor(months / 12), r = months % 12;
-  if (y <= 0 && r <= 0) return "< 1 tháng";
+  if (y <= 0 && r <= 0) {
+    return lang === "zh" ? "< 1个月" : lang === "en" ? "< 1 month" : "< 1 tháng";
+  }
+  if (lang === "zh") {
+    return [y > 0 ? `${y}年` : null, r > 0 ? `${r}个月` : null].filter(Boolean).join("");
+  }
+  if (lang === "en") {
+    return [
+      y > 0 ? `${y} ${y > 1 ? "years" : "year"}` : null,
+      r > 0 ? `${r} ${r > 1 ? "months" : "month"}` : null,
+    ].filter(Boolean).join(" ");
+  }
   return [y > 0 ? `${y} năm` : null, r > 0 ? `${r} tháng` : null].filter(Boolean).join(" ");
 };
 

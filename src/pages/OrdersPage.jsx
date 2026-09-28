@@ -11,12 +11,12 @@ import { useApp } from "../context/AppContext";
 import { downloadOrderTemplate, parseAndDedupOrders } from "../lib/excel";
 import { btnIcon, btnSecondary, card, inputCls } from "../lib/styles";
 import { useTableHistory } from "../lib/useTableHistory";
-import { t } from "../lib/i18n";
+import { getOrderStatusLabel, t } from "../lib/i18n";
 
 export function OrdersPage() {
-  const { db, setDb, pushToast, confirmAction, lang = "vi" } = useApp();
+  const { db, setDb, pushToast, confirmAction, lang = "vi", searchQuery = "" } = useApp();
+  const query = searchQuery;
   const [tab, setTab] = useState("open");
-  const [query, setQuery] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [excelOpen, setExcelOpen] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -111,8 +111,8 @@ export function OrdersPage() {
     updateOrder(order.id, { completed });
     pushToast(
       completed
-        ? `Đã chuyển ${order.orderCode} sang Đã hoàn thiện / 已移至已完成`
-        : `Đã khôi phục ${order.orderCode} về đang sản xuất / 已恢复处理中`,
+        ? `${order.orderCode}: ${lang === "zh" ? "已移至已完成" : lang === "en" ? "Moved to Completed" : "Đã chuyển sang Đã hoàn thiện"}`
+        : `${order.orderCode}: ${lang === "zh" ? "已恢复生产中" : lang === "en" ? "Restored to In Production" : "Đã khôi phục về đang sản xuất"}`,
       "success"
     );
   };
@@ -216,11 +216,10 @@ export function OrdersPage() {
           zh="订单数据"
           actions={
             <>
-              <SearchBox value={query} onChange={setQuery} placeholder={t("searchOrderPlaceholder", lang)} />
-              <div className="flex items-center gap-1 border border-line bg-white px-2 py-1 rounded-xs">
+              <div className="flex h-10 items-center gap-1 border border-line bg-white px-2.5 rounded-xl shadow-xs">
                 <button
                   type="button"
-                  className="p-1 hover:text-[#2051A3] disabled:opacity-40 disabled:hover:text-inherit"
+                  className="p-1.5 rounded-lg text-body hover:text-brand hover:bg-canvas transition-colors disabled:opacity-40 disabled:hover:text-inherit disabled:hover:bg-transparent"
                   disabled={!canUndo}
                   onClick={undo}
                   title={t("undo", lang)}
@@ -229,7 +228,7 @@ export function OrdersPage() {
                 </button>
                 <button
                   type="button"
-                  className="p-1 hover:text-[#2051A3] disabled:opacity-40 disabled:hover:text-inherit"
+                  className="p-1.5 rounded-lg text-body hover:text-brand hover:bg-canvas transition-colors disabled:opacity-40 disabled:hover:text-inherit disabled:hover:bg-transparent"
                   disabled={!canRedo}
                   onClick={redo}
                   title={t("redo", lang)}
@@ -260,15 +259,15 @@ export function OrdersPage() {
 
       <div className={`${card} overflow-hidden bg-white`}>
         <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-270px)]">
-          <table className="w-full table-fixed text-sm border-separate border-spacing-0">
+          <table className="w-full min-w-[1080px] table-fixed text-sm border-separate border-spacing-0">
             <colgroup>
-              <col className="w-[6%]" />
-              <col className="w-[18%]" />
-              <col className="w-[18%]" />
-              <col className="w-[12%]" />
-              <col className="w-[20%]" />
+              <col className="w-[5%]" />
               <col className="w-[16%]" />
-              <col className="w-[10%]" />
+              <col className="w-[15%]" />
+              <col className="w-[9%]" />
+              <col className="w-[23%]" />
+              <col className="w-[20%]" />
+              <col className="w-[12%]" />
             </colgroup>
             <thead className="pe-thead text-sm sticky top-0 z-10 bg-[#F8FAFC] shadow-xs">
               <tr className="h-10">
@@ -371,32 +370,32 @@ export function OrdersPage() {
                   </td>
                   <td className={`px-3 py-2 ${selCls(o.id, "completed")}`} onClick={() => setSelected({ rowId: o.id, colKey: "completed" })}>
                     <select
-                      className={`border border-transparent px-2.5 py-1.5 text-sm font-bold cursor-pointer rounded-xs ${
+                      className={`w-full max-w-full truncate border border-transparent px-2.5 py-1.5 text-sm font-bold cursor-pointer rounded-xs ${
                         o.completed ? "border-ok-soft bg-ok-tint text-ok" : "border-brand-soft bg-brand-tint text-brand"
                       }`}
                       value={o.completed ? "done" : "open"}
                       onChange={(e) => handleStatusChange(o, e.target.value === "done")}
                     >
-                      <option value="open">Đang trong quá trình sản xuất / 生产中</option>
-                      <option value="done">Đã hoàn thiện / 已完成</option>
+                      <option value="open">{getOrderStatusLabel("open", lang)}</option>
+                      <option value="done">{getOrderStatusLabel("done", lang)}</option>
                     </select>
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <div className="flex justify-end gap-1">
+                    <div className="flex items-center justify-end gap-1">
                       {o.completed && (
                         <button
                           type="button"
                           className={btnSecondary}
                           onClick={() => handleStatusChange(o, false)}
                         >
-                          <Undo2 size={13} /> Khôi phục
+                          <Undo2 size={13} /> {lang === "zh" ? "恢复" : lang === "en" ? "Restore" : "Khôi phục"}
                         </button>
                       )}
                       <button
                         type="button"
                         className={`${btnIcon} text-bad rounded-xs`}
                         onClick={() => deleteOrder(o)}
-                        title="Xóa đơn hàng / 删除"
+                        title={lang === "zh" ? "删除订单" : lang === "en" ? "Delete order" : "Xóa đơn hàng"}
                       >
                         <Trash2 size={14} />
                       </button>
