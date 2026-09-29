@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCheck, Cpu, FileText, Package, PlayCircle, Trash2 } from "lucide-react";
+import { CheckCheck, Cpu, FileText, Package, PlayCircle, Trash2, Undo2 } from "lucide-react";
 import { OrderForm } from "../components/orders/OrderForm";
 import { AddActionButton } from "../components/ui/AddActionButton";
 import { UndoRedoButtons } from "../components/ui/UndoRedoButtons";
@@ -11,6 +11,8 @@ import { Segmented } from "../components/ui/Segmented";
 import { SortableTh } from "../components/ui/SortableTh";
 import { useApp } from "../context/AppContext";
 import { downloadOrderTemplate, parseAndDedupOrders } from "../lib/excel";
+import { isSupabaseConfigured, orderToDb, syncTableToSupabase } from "../lib/supabase";
+import { storage } from "../sync/storage";
 import { btnIcon, btnSecondary, card, inputCls } from "../lib/styles";
 import { useTableHistory } from "../lib/useTableHistory";
 import { getOrderStatusLabel, t } from "../lib/i18n";
@@ -136,15 +138,30 @@ export function OrdersPage() {
     const code = String(data.orderCode || "").trim();
     const sz = String(data.size || "").trim();
     const uniqueId = `ORD-${code}${sz ? `-${sz}` : ""}-${Date.now()}`;
-    setOrdersWithHistory((prev) => [...prev, { id: uniqueId, ...data, orderCode: code, size: sz }]);
+    const newOrder = { id: uniqueId, ...data, orderCode: code, size: sz };
+    setOrdersWithHistory((prev) => [...prev, newOrder]);
     pushToast("Đã thêm đơn hàng / 已新增", "success");
     setAddOpen(false);
+
+    // Kích hoạt đồng bộ tức thì lên Supabase ngay lập tức
+    if (isSupabaseConfigured) {
+      syncTableToSupabase("orders", [orderToDb(newOrder)]).then((res) => {
+        if (!res.ok) {
+          console.warn("Lỗi sync đơn hàng lên Supabase:", res.error);
+        }
+      });
+    }
   };
 
   const deleteOrder = (o) => {
     confirmAction(
       `Cảnh báo: Bạn có chắc chắn muốn xóa vĩnh viễn đơn hàng "${o.orderCode}" không? / 警告：确定要删除订单 "${o.orderCode}" 吗？`,
       () => {
+        // Ghi nhận ID đã xóa để reload không bị phục hồi nhầm
+        const delIds = storage.get("pe_deleted_order_ids") || [];
+        if (!delIds.includes(o.id)) {
+          storage.set("pe_deleted_order_ids", [...delIds, o.id]);
+        }
         setOrdersWithHistory((prev) => prev.filter((x) => x.id !== o.id));
         pushToast("Đã xóa đơn hàng / 已删除", "info");
       },

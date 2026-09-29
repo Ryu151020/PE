@@ -32,6 +32,7 @@ export function Sidebar({ page, setPage, collapsed, setCollapsed }) {
   const versionLabel = t("versionLabel", lang);
   const collapseLabel = t("collapseMenu", lang);
   const expandLabel = t("expandMenu", lang);
+  const revision = import.meta.env.VITE_APP_REVISION || import.meta.env.VITE_REVISION || "";
 
   return (
     <aside className="v-sidebar hidden shrink-0 flex-col md:flex" style={{ width: collapsed ? 84 : 290 }}>
@@ -78,11 +79,25 @@ export function Sidebar({ page, setPage, collapsed, setCollapsed }) {
         </nav>
       </div>
 
-      {!collapsed && (
+      {!collapsed ? (
         <div className="v-promo v-sheen">
           <div className="text-sm font-bold leading-snug">{workshopTitle}</div>
           <div className="mt-1 text-xs font-medium text-white/70">{versionLabel}</div>
+          {revision && (
+            <div className="mt-1.5 pt-1.5 border-t border-white/10 flex items-center justify-between text-[11px] font-mono text-white/70">
+              <span className="opacity-75">Revision:</span>
+              <span className="rounded bg-white/20 px-1.5 py-0.5 font-semibold text-white tracking-wider">{revision}</span>
+            </div>
+          )}
         </div>
+      ) : (
+        revision && (
+          <div className="mb-2 text-center" title={`Revision: ${revision}`}>
+            <span className="font-mono text-[10px] text-mute font-semibold tracking-wider">
+              {revision.slice(0, 7)}
+            </span>
+          </div>
+        )
       )}
 
       <button

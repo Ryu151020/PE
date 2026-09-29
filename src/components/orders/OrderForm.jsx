@@ -21,22 +21,20 @@ export function OrderForm({ open, onClose, onSave, initial, molds, existingOrder
       return;
     }
 
-    // Check if an order with the same orderCode AND size already exists
+    // Check if an order with the same orderCode already exists (enforced by DB unique constraint)
     const list = existingOrders.length > 0 ? existingOrders : (Array.isArray(existingCodes) ? existingCodes.map((c) => (typeof c === "object" ? c : { orderCode: c, size: "" })) : []);
     const isDuplicate = list.some((o) => {
       if (initial && o.id === initial.id) return false;
-      const sameCode = String(o.orderCode || "").trim().toLowerCase() === code.toLowerCase();
-      const sameSize = String(o.size || "").trim().toLowerCase() === sz.toLowerCase();
-      return sameCode && sameSize;
+      return String(o.orderCode || "").trim().toLowerCase() === code.toLowerCase();
     });
 
     if (isDuplicate) {
       setError(
         lang === "zh"
-          ? `订单编号 ${code}${sz ? ` (Size: ${sz})` : ""} 已存在`
+          ? `订单编号 ${code} 已存在`
           : lang === "en"
-          ? `Order ${code}${sz ? ` (Size: ${sz})` : ""} already exists`
-          : `Đơn hàng ${code}${sz ? ` (Size: ${sz})` : ""} đã tồn tại`
+          ? `Order ${code} already exists`
+          : `Đơn hàng ${code} đã tồn tại`
       );
       return;
     }
