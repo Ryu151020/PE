@@ -5,6 +5,7 @@ import { EmployeeDetailDrawer } from "../components/employees/EmployeeDetailDraw
 import { EmployeeForm } from "../components/employees/EmployeeForm";
 import { PasteImportModal } from "../components/employees/PasteImportModal";
 import { ResignReasonCell } from "../components/employees/ResignReasonCell";
+import { ResignConfirmModal } from "../components/employees/ResignConfirmModal";
 import { AddActionButton } from "../components/ui/AddActionButton";
 import { UndoRedoButtons } from "../components/ui/UndoRedoButtons";
 import { StatCard } from "../components/ui/StatCard";
@@ -38,6 +39,7 @@ export function EmployeesPage() {
   const [resignRange, setResignRange] = useState(null);
   const [form, setForm] = useState(null);
   const [detailEmployee, setDetailEmployee] = useState(null);
+  const [resignModalEmployee, setResignModalEmployee] = useState(null);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [excelOpen, setExcelOpen] = useState(false);
   const [sortConfig, setSortConfig] = useState(() => storage.get("pe_employees_sort") || { key: null, direction: null });
@@ -77,6 +79,9 @@ export function EmployeesPage() {
       setEmployeesWithHistory((prev) =>
         prev.map((e) => (e.id === form.id ? { ...e, ...data } : e))
       );
+      if (data.status === EMP_STATUS.RESIGNED) {
+        setTab("resigned");
+      }
       pushToast(
         data.status === EMP_STATUS.RESIGNED
           ? "Đã chuyển nhân sự sang danh sách Nghỉ việc / 已转移至离职名单"
@@ -88,6 +93,9 @@ export function EmployeesPage() {
         ...prev,
         { id: data.employeeCode, ...data },
       ]);
+      if (data.status === EMP_STATUS.RESIGNED) {
+        setTab("resigned");
+      }
       pushToast("Đã thêm nhân sự mới / 已新增", "success");
     }
     setForm(null);
@@ -100,12 +108,34 @@ export function EmployeesPage() {
 
   const handleStatusChange = (e, newStatus) => {
     if (newStatus === EMP_STATUS.RESIGNED) {
-      updateEmployee(e.id, { status: newStatus, resignDate: TODAY_KEY });
-      pushToast(`Đã chuyển ${e.vietnameseName} sang danh sách Nghỉ việc / 已转移至离职名单`, "success");
+      setResignModalEmployee(e);
     } else {
-      updateEmployee(e.id, { status: newStatus });
-      pushToast(`Đã cập nhật trạng thái ${e.vietnameseName} / 已更新状态`, "success");
+      if (e.status === EMP_STATUS.RESIGNED) {
+        updateEmployee(e.id, { status: newStatus, resignDate: null, resignReason: "" });
+        pushToast(`Đã khôi phục ${e.vietnameseName} về trạng thái ${getStatusLabel(newStatus, lang)} / 已恢复`, "success");
+      } else {
+        updateEmployee(e.id, { status: newStatus });
+        pushToast(`Đã cập nhật trạng thái ${e.vietnameseName} / 已更新状态`, "success");
+      }
     }
+  };
+
+  const handleConfirmResign = ({ resignDate, resignReason }) => {
+    if (!resignModalEmployee) return;
+    const emp = resignModalEmployee;
+    updateEmployee(emp.id, {
+      status: EMP_STATUS.RESIGNED,
+      resignDate: resignDate || TODAY_KEY,
+      resignReason: resignReason || "Chưa ghi nhận",
+    });
+    setResignModalEmployee(null);
+    setTab("resigned");
+    pushToast(
+      lang === "zh"
+        ? `已将 ${emp.vietnameseName} 转移至离职名单`
+        : `Đã chuyển ${emp.vietnameseName} sang danh sách Nghỉ việc`,
+      "success"
+    );
   };
 
   const deleteEmployee = (e) => {
@@ -177,6 +207,13 @@ export function EmployeesPage() {
   const setCell = (rowId, colKey, value) => {
     if (colKey === "position" && value && !POSITION_LIST.includes(value)) return;
     if (colKey === "status" && value && !EMP_STATUS_DEFS.some((s) => s.vi === value)) return;
+    if (colKey === "status" && value === EMP_STATUS.RESIGNED) {
+      const emp = employees.find((x) => x.id === rowId);
+      if (emp) {
+        setResignModalEmployee(emp);
+        return;
+      }
+    }
     updateEmployee(rowId, { [colKey]: value });
   };
 
@@ -390,17 +427,31 @@ export function EmployeesPage() {
                   className="min-w-[130px]"
                 />
                 {tab === "resigned" && (
-                  <SortableTh
-                    labelVi="Ngày rời đi"
-                    labelZh="离职"
-                    colKey="resignDate"
-                    sortConfig={sortConfig}
-                    onSort={handleSort}
-                    filterValue={filters.resignDate}
-                    onFilterChange={handleFilterChange}
-                    data={tabEmployees}
-                    className="min-w-[130px]"
-                  />
+                  <>
+                    <SortableTh
+                      labelVi="Ngày rời đi"
+                      labelZh="离职"
+                      colKey="resignDate"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                      filterValue={filters.resignDate}
+                      onFilterChange={handleFilterChange}
+                      data={tabEmployees}
+                      className="min-w-[130px]"
+                    />
+                    <SortableTh
+                      labelVi="Lý do nghỉ việc"
+                      labelZh="离职原因"
+                      labelEn="Resign Reason"
+                      colKey="resignReason"
+                      sortConfig={sortConfig}
+                      onSort={handleSort}
+                      filterValue={filters.resignReason}
+                      onFilterChange={handleFilterChange}
+                      data={tabEmployees}
+                      className="min-w-[185px]"
+                    />
+                  </>
                 )}
                 <th className="px-3 py-2 text-left align-middle font-bold text-black text-sm whitespace-nowrap min-w-[120px] bg-[#F8FAFC] border-b border-r border-line">
                   {t("seniority", lang)}
@@ -510,14 +561,22 @@ export function EmployeesPage() {
                     />
                   </td>
                   {tab === "resigned" && (
-                    <td className={`px-2 py-2 align-middle border-b border-r border-line ${selCls(e.id, "resignDate")}`} onClick={() => setSelected({ rowId: e.id, colKey: "resignDate" })}>
-                      <input
-                        type="date"
-                        className={`${inputCls} v-input--sm text-sm`}
-                        value={e.resignDate || ""}
-                        onChange={(ev) => updateEmployee(e.id, { resignDate: ev.target.value })}
-                      />
-                    </td>
+                    <>
+                      <td className={`px-2 py-2 align-middle border-b border-r border-line ${selCls(e.id, "resignDate")}`} onClick={() => setSelected({ rowId: e.id, colKey: "resignDate" })}>
+                        <input
+                          type="date"
+                          className={`${inputCls} v-input--sm text-sm`}
+                          value={e.resignDate || ""}
+                          onChange={(ev) => updateEmployee(e.id, { resignDate: ev.target.value })}
+                        />
+                      </td>
+                      <td className={`px-2 py-2 align-middle min-w-[185px] border-b border-r border-line ${selCls(e.id, "resignReason")}`} onClick={() => setSelected({ rowId: e.id, colKey: "resignReason" })}>
+                        <ResignReasonCell
+                          value={e.resignReason || ""}
+                          onChange={(val) => updateEmployee(e.id, { resignReason: val })}
+                        />
+                      </td>
+                    </>
                   )}
                   <td className="px-2 py-2 text-sm text-ink whitespace-nowrap align-middle border-b border-r border-line">
                     {formatSeniority(e.joinDate, e.resignDate, lang) || ""}
@@ -607,7 +666,7 @@ export function EmployeesPage() {
               ))}
               {filteredAndSortedList.length === 0 && (
                 <tr>
-                  <td colSpan={tab === "resigned" ? 14 : 13} className="px-3 py-8 text-center text-mute text-sm">
+                  <td colSpan={tab === "resigned" ? 15 : 13} className="px-3 py-8 text-center text-mute text-sm">
                     Không có nhân sự phù hợp / 没有符合条件的员工
                   </td>
                 </tr>
@@ -655,6 +714,13 @@ export function EmployeesPage() {
           onConfirmImport={handleExcelImport}
         />
       )}
+
+      <ResignConfirmModal
+        employee={resignModalEmployee}
+        onClose={() => setResignModalEmployee(null)}
+        onConfirm={handleConfirmResign}
+        lang={lang}
+      />
     </div>
   );
 }

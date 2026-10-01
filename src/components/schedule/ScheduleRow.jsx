@@ -167,12 +167,15 @@ export function ScheduleRow({ machine, entry, molds, orders, ordersById, editabl
     });
   };
 
-  const currentOrder = entry.orderId ? ordersById[entry.orderId] : null;
+  const currentOrder = entry.orderId
+    ? (ordersById[entry.orderId] || orders.find((o) => o.id === entry.orderId || o.orderCode === entry.orderId))
+    : null;
   const orderLabel = (o) => {
     if (!o) return "";
     const sz = o.size ? String(o.size).replace(/^size\s*/i, "").trim() : "";
     return `${o.orderCode}${sz ? ` (${sz})` : ""}`;
   };
+  const currentOrderLabel = currentOrder ? orderLabel(currentOrder) : (entry.orderId ? String(entry.orderId) : "");
 
   const moldOptions = useMemo(
     () => molds.map((m) => ({ value: m.id, label: m.moldName })),
@@ -180,23 +183,14 @@ export function ScheduleRow({ machine, entry, molds, orders, ordersById, editabl
   );
 
   const orderOptions = useMemo(
-    () => {
-      const list = [...orders];
-      if (entry.orderId && !list.some((o) => o.id === entry.orderId || o.orderCode === entry.orderId)) {
-        if (currentOrder) {
-          list.push(currentOrder);
-        } else {
-          list.push({ id: entry.orderId, orderCode: entry.orderId });
-        }
-      }
-      return list.map((o) => ({
-        value: o.id,
-        label: orderLabel(o),
-        disabled: false,
-        sub: o.completed ? (lang === "zh" ? "已完成" : "Đã xong") : "",
-      }));
-    },
-    [orders, entry.orderId, currentOrder, lang]
+    () =>
+      orders
+        .filter((o) => !o.completed)
+        .map((o) => ({
+          value: o.id,
+          label: orderLabel(o),
+        })),
+    [orders]
   );
 
   const effectiveFilmRoll = currentOrder ? (currentOrder.filmRollName || "") : (entry.filmRollName || "");
@@ -226,6 +220,7 @@ export function ScheduleRow({ machine, entry, molds, orders, ordersById, editabl
       <td className={`${cellCls("order")} bg-white group-hover:bg-[#F0F4FE] transition-colors align-middle`} onMouseDown={(e) => onCellMouseDown(e, "order", machine.id)} onMouseEnter={() => onCellEnter("order", machine.id)} onClick={(e) => onSelectCell("order", machine.id, e.shiftKey)} style={selStyle("order")}>
         <SearchableSelect
           value={entry.orderId || null}
+          selectedLabel={currentOrderLabel}
           onChange={handleOrderChange}
           options={orderOptions}
           cellMode={true}

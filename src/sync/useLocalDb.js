@@ -18,10 +18,25 @@ const DELETED_ORDERS_KEY = "pe_deleted_order_ids";
 const DELETED_EMPLOYEES_KEY = "pe_deleted_employee_ids";
 const DELETED_MOLDS_KEY = "pe_deleted_mold_ids";
 
+const cleanOrder = (o) => {
+  if (!o || !o.orderCode) return o;
+  let code = String(o.orderCode).trim();
+  if (code.includes("##")) code = code.split("##")[0];
+  if (code.includes("__")) code = code.split("__")[0];
+  const match = code.match(/^(.*?)\s*\((.*?)\)$/);
+  if (match && (!o.size || match[2].toLowerCase() === String(o.size).toLowerCase())) {
+    code = match[1].trim();
+  }
+  return { ...o, orderCode: code };
+};
+
 export function useLocalDb() {
   const [db, setDbState] = useState(() => {
     const saved = storage.get(LOCAL_DB_KEY);
-    if (saved && saved.machines && saved.machines.length > 0) return saved;
+    if (saved && saved.machines && saved.machines.length > 0) {
+      if (saved.orders) saved.orders = saved.orders.map(cleanOrder);
+      return saved;
+    }
     const initial = createBlankDb();
     storage.set(LOCAL_DB_KEY, initial);
     return initial;
@@ -62,13 +77,79 @@ export function useLocalDb() {
           });
         }
 
-        // When remote fetch succeeds, Supabase is the source of truth for tables.
-        // We do NOT resurrect old deleted local rows back to remote!
+        // 2. Orders merge: Remote + Local (excluding deleted items in tombstone)
+        const deletedOrderIds = new Set(storage.get(DELETED_ORDERS_KEY) || []);
+        const remoteOrderMap = new Map();
+        (remoteData.orders || []).forEach((o) => {
+          if (deletedOrderIds.has(o.id)) {
+            deleteFromSupabase("orders", o.id);
+          } else {
+            remoteOrderMap.set(o.id, cleanOrder(o));
+          }
+        });
+
+        const pendingOrders = [];
+        if (localCached?.orders) {
+          localCached.orders.forEach((loc) => {
+            if (deletedOrderIds.has(loc.id)) return;
+            if (!remoteOrderMap.has(loc.id)) {
+              const cleaned = cleanOrder(loc);
+              remoteOrderMap.set(loc.id, cleaned);
+              pendingOrders.push(cleaned);
+            }
+          });
+        }
+        const mergedOrders = Array.from(remoteOrderMap.values()).map(cleanOrder);
+
+        // 3. Employees merge
+        const deletedEmpIds = new Set(storage.get(DELETED_EMPLOYEES_KEY) || []);
+        const remoteEmpMap = new Map();
+        (remoteData.employees || []).forEach((e) => {
+          if (deletedEmpIds.has(e.id)) {
+            deleteFromSupabase("employees", e.id);
+          } else {
+            remoteEmpMap.set(e.id, e);
+          }
+        });
+        const pendingEmployees = [];
+        if (localCached?.employees) {
+          localCached.employees.forEach((loc) => {
+            if (deletedEmpIds.has(loc.id)) return;
+            if (!remoteEmpMap.has(loc.id)) {
+              remoteEmpMap.set(loc.id, loc);
+              pendingEmployees.push(loc);
+            }
+          });
+        }
+        const mergedEmployees = Array.from(remoteEmpMap.values());
+
+        // 4. Molds merge
+        const deletedMoldIds = new Set(storage.get(DELETED_MOLDS_KEY) || []);
+        const remoteMoldMap = new Map();
+        (remoteData.molds || []).forEach((m) => {
+          if (deletedMoldIds.has(m.id)) {
+            deleteFromSupabase("molds", m.id);
+          } else {
+            remoteMoldMap.set(m.id, m);
+          }
+        });
+        const pendingMolds = [];
+        if (localCached?.molds) {
+          localCached.molds.forEach((loc) => {
+            if (deletedMoldIds.has(loc.id)) return;
+            if (!remoteMoldMap.has(loc.id)) {
+              remoteMoldMap.set(loc.id, loc);
+              pendingMolds.push(loc);
+            }
+          });
+        }
+        const mergedMolds = Array.from(remoteMoldMap.values());
+
         const mergedData = {
           ...remoteData,
-          orders: remoteData.orders || [],
-          employees: remoteData.employees || [],
-          molds: remoteData.molds || [],
+          orders: mergedOrders,
+          employees: mergedEmployees,
+          molds: mergedMolds,
           machines: remoteData.machines || [],
           schedules: mergedSchedules,
         };
@@ -76,13 +157,20 @@ export function useLocalDb() {
         setDbState(mergedData);
         prevDbRef.current = mergedData;
         storage.set(LOCAL_DB_KEY, mergedData);
-        // Clear any old tombstone keys since remote is now cleanly synced
-        storage.remove(DELETED_ORDERS_KEY);
-        storage.remove(DELETED_EMPLOYEES_KEY);
-        storage.remove(DELETED_MOLDS_KEY);
 
         setSyncStatus("connected");
         setLastSyncedAt(Date.now());
+
+        // Background sync: push any locally pending rows up to Supabase
+        if (pendingOrders.length > 0) {
+          syncTableToSupabase("orders", pendingOrders.map(orderToDb));
+        }
+        if (pendingEmployees.length > 0) {
+          syncTableToSupabase("employees", pendingEmployees.map(employeeToDb));
+        }
+        if (pendingMolds.length > 0) {
+          syncTableToSupabase("molds", pendingMolds.map(moldToDb));
+        }
 
         // Background sync: push any locally cached schedules that are newer in local
         if (localCached?.schedules) {

@@ -7,6 +7,7 @@ import { t } from "../../lib/i18n";
 
 export function SearchableSelect({
   value,
+  selectedLabel = "",
   onChange,
   options = [],
   placeholder = "",
@@ -34,7 +35,7 @@ export function SearchableSelect({
     [options, value]
   );
 
-  const displayLabel = selectedOption ? selectedOption.label : (value ? String(value) : "");
+  const displayLabel = selectedLabel || (selectedOption ? selectedOption.label : (value ? String(value) : ""));
   const selectedMoldStyle = isMold && displayLabel ? getMoldColor(displayLabel) : null;
 
   const filteredOptions = useMemo(() => {
@@ -145,12 +146,8 @@ export function SearchableSelect({
           type="button"
           disabled={disabled}
           onClick={handleOpen}
-          className={`flex w-full min-h-[26px] items-center rounded-xs transition-colors cursor-pointer ${
+          className={`flex w-full min-h-[26px] items-center rounded-xs transition-colors cursor-pointer outline-none focus:outline-none border-0 ${
             isMold ? "justify-center text-center" : "justify-start text-left px-1"
-          } ${
-            open
-              ? "border border-[#4318FF] ring-2 ring-[#4318FF]/20 bg-[#F4F7FE]"
-              : "border border-transparent hover:border-line hover:bg-canvas/50"
           }`}
           title={isMold ? "Bấm để chọn khuôn" : "Bấm để chọn đơn hàng"}
         >

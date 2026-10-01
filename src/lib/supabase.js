@@ -98,9 +98,21 @@ export function machineToDb(machine) {
 }
 
 export function orderFromDb(row) {
+  let cleanCode = String(row.order_code || "").trim();
+  if (cleanCode.includes("##")) {
+    cleanCode = cleanCode.split("##")[0];
+  } else if (cleanCode.includes("__")) {
+    cleanCode = cleanCode.split("__")[0];
+  } else {
+    const legacyMatch = cleanCode.match(/^(.*?)\s*\((.*?)\)$/);
+    if (legacyMatch && (!row.size || legacyMatch[2].toLowerCase() === String(row.size).toLowerCase())) {
+      cleanCode = legacyMatch[1].trim();
+    }
+  }
+
   return {
     id: row.id,
-    orderCode: row.order_code,
+    orderCode: cleanCode,
     moldId: row.mold_id || null,
     size: row.size || "",
     filmRollName: row.film_roll_name || "",
@@ -184,12 +196,58 @@ export async function fetchFullDatabase() {
 
 export async function syncTableToSupabase(tableName, rows, onConflict) {
   if (!supabase) return { ok: false, error: "Supabase not configured" };
+  if (!rows || rows.length === 0) return { ok: true };
 
   try {
     const conflictCol = onConflict || (tableName === "schedules" ? "date" : "id");
-    const { error } = await supabase.from(tableName).upsert(rows, { onConflict: conflictCol });
-    if (error) throw error;
-    return { ok: true };
+
+    // For orders, ensure distinct order_code in the batch if orders_order_code_key constraint exists on Supabase
+    let rowsToUpsert = rows;
+    if (tableName === "orders") {
+      const seen = new Set();
+      rowsToUpsert = rows.map((r) => {
+        const item = { ...r };
+        const code = String(item.order_code || "").trim().toLowerCase();
+        if (seen.has(code)) {
+          const suffix = item.size ? `__${item.size}` : `__${item.id}`;
+          item.order_code = `${item.order_code}${suffix}`;
+        }
+        seen.add(code);
+        return item;
+      });
+    }
+
+    const { error } = await supabase.from(tableName).upsert(rowsToUpsert, { onConflict: conflictCol });
+    if (error) {
+      console.warn(`Batch sync ${tableName} error: ${error.message}. Retrying row-by-row...`);
+      let successCount = 0;
+      let lastErr = error.message;
+      for (const row of rows) {
+        let rowToInsert = { ...row };
+        let singleRes = await supabase.from(tableName).upsert([rowToInsert], { onConflict: conflictCol });
+        if (singleRes.error && tableName === "orders") {
+          // If mold_id foreign key failed, retry with mold_id: null so the order is saved
+          if (rowToInsert.mold_id && singleRes.error.message?.includes("foreign key")) {
+            rowToInsert.mold_id = null;
+            singleRes = await supabase.from(tableName).upsert([rowToInsert], { onConflict: conflictCol });
+          }
+          // If orders_order_code_key unique constraint failed, retry with unique suffix
+          if (singleRes.error && singleRes.error.message?.includes("orders_order_code_key")) {
+            const sizeSuffix = rowToInsert.size ? `__${rowToInsert.size}` : `__${rowToInsert.id}`;
+            rowToInsert.order_code = `${row.order_code}${sizeSuffix}`;
+            singleRes = await supabase.from(tableName).upsert([rowToInsert], { onConflict: conflictCol });
+          }
+        }
+        if (!singleRes.error) {
+          successCount++;
+        } else {
+          lastErr = singleRes.error.message;
+          console.warn(`Failed row in ${tableName}:`, rowToInsert, singleRes.error.message);
+        }
+      }
+      return { ok: successCount > 0, count: successCount, error: successCount === 0 ? lastErr : null };
+    }
+    return { ok: true, count: rows.length };
   } catch (err) {
     console.error(`Error syncing ${tableName} to Supabase:`, err);
     return { ok: false, error: err.message };

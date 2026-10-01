@@ -201,11 +201,6 @@ export function ScheduleTable({ machines, molds, orders, ordersById, entries, ed
           </tbody>
         </table>
       </div>
-      {editable && selection && (
-        <div className="flex items-center justify-end border-t border-line bg-canvas px-3 py-1.5 text-xs text-mute">
-          <span className="font-bold text-brand">Đang chọn {selection.machineIds.length} × {selection.colKeys.length} = {selection.machineIds.length * selection.colKeys.length} ô</span>
-        </div>
-      )}
     </div>
   );
 }

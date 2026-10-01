@@ -227,21 +227,26 @@ export function parseAndDedupEmployees(fileBuffer, existingEmployees) {
   return { added: newEmployees, addedCount: newEmployees.length, skippedCount };
 }
 
-export function parseAndDedupOrders(fileBuffer, existingOrders, molds = []) {
+export function parseAndDedupOrders(fileBuffer, existingOrders = [], molds = []) {
   const wb = XLSX.read(fileBuffer, { type: "array", cellDates: true });
   const sheetName = wb.SheetNames.includes("Đơn hàng") ? "Đơn hàng" : wb.SheetNames[0];
   const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]);
   const moldByName = {};
   molds.forEach((m) => {
-    moldByName[m.moldName.trim().toLowerCase()] = m.id;
+    if (m.moldName) moldByName[m.moldName.trim().toLowerCase()] = m.id;
+    if (m.id) moldByName[m.id.toLowerCase()] = m.id;
   });
 
-  const getOrderKey = (code, size) =>
-    `${String(code || "").trim().toLowerCase()}___${String(size || "").trim().toLowerCase()}`;
+  const getOrderKey = (code, size, moldName = "") =>
+    `${String(code || "").trim().toLowerCase()}___${String(size || "").trim().toLowerCase()}___${String(moldName || "").trim().toLowerCase()}`;
 
   const existingKeys = new Set(
-    existingOrders.map((o) => getOrderKey(o.orderCode, o.size))
+    existingOrders.map((o) => {
+      const mold = molds.find((m) => m.id === o.moldId);
+      return getOrderKey(o.orderCode, o.size, mold?.moldName || "");
+    })
   );
+
   const newOrders = [];
   let skippedCount = 0;
 
@@ -249,7 +254,11 @@ export function parseAndDedupOrders(fileBuffer, existingOrders, molds = []) {
     const code = String(r["Mã đơn hàng"] || r["orderCode"] || "").trim();
     if (!code) return;
     const size = String(r["Size"] || r["size"] || "").trim();
-    const key = getOrderKey(code, size);
+    const moldRaw = String(r["Khuôn"] || r["moldName"] || "").trim().toLowerCase();
+    const moldId = moldByName[moldRaw] || null;
+    const moldName = molds.find((m) => m.id === moldId)?.moldName || moldRaw;
+
+    const key = getOrderKey(code, size, moldName);
 
     if (existingKeys.has(key)) {
       skippedCount++;
@@ -257,11 +266,9 @@ export function parseAndDedupOrders(fileBuffer, existingOrders, molds = []) {
     }
 
     existingKeys.add(key);
-    const moldRaw = String(r["Khuôn"] || r["moldName"] || "").trim().toLowerCase();
-    const moldId = moldByName[moldRaw] || null;
 
     newOrders.push({
-      id: `ORD-${code}${size ? `-${size}` : ""}-${Date.now()}-${idx}`,
+      id: `ORD-${code}-${size || idx}-${Date.now()}-${idx}`,
       orderCode: code,
       moldId,
       size,

@@ -175,9 +175,23 @@ export function OrdersPage() {
     );
   };
 
-  const handleExcelImport = (newOrders) => {
+  const handleExcelImport = async (newOrders) => {
+    if (!newOrders || newOrders.length === 0) return;
     setOrdersWithHistory((prev) => [...prev, ...newOrders]);
-    pushToast(`Đã thêm mới ${newOrders.length} đơn hàng từ Excel / 已新增`, "success");
+    pushToast(`Đang đồng bộ ${newOrders.length} đơn hàng lên hệ thống...`, "info");
+
+    if (isSupabaseConfigured) {
+      const rows = newOrders.map(orderToDb);
+      const res = await syncTableToSupabase("orders", rows);
+      if (res.ok) {
+        pushToast(`Đã thêm mới và lưu vĩnh viễn ${res.count || newOrders.length} đơn hàng từ Excel!`, "success");
+      } else {
+        console.error("Supabase import error:", res.error);
+        pushToast(`Cảnh báo: Có lỗi khi lưu cloud: ${res.error || "kiểm tra kết nối"}`, "warn");
+      }
+    } else {
+      pushToast(`Đã thêm mới ${newOrders.length} đơn hàng từ Excel / 已新增`, "success");
+    }
   };
 
   const tabOrders = useMemo(
