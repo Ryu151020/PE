@@ -3,13 +3,19 @@ import {
   bulkDeleteFromSupabase,
   deleteAllFromSupabase,
   deleteFromSupabase,
+  employeeFromDb,
   employeeToDb,
   fetchFullDatabase,
   isSupabaseConfigured,
+  machineFromDb,
   machineToDb,
+  moldFromDb,
   moldToDb,
+  orderFromDb,
   orderToDb,
+  scheduleFromDb,
   scheduleToDb,
+  supabase,
   syncTableToSupabase,
 } from "../lib/supabase";
 import { createBlankDb } from "../lib/seed";
@@ -57,6 +63,8 @@ export function useLocalDb() {
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
   const prevDbRef = useRef(db);
   const isDeletingRef = useRef(false);
+  const isRemoteUpdateRef = useRef(false);
+  const broadcastRef = useRef(null);
 
   // Fetch full data from Supabase on mount if configured
   const reloadFromSupabase = useCallback(async () => {
@@ -107,6 +115,7 @@ export function useLocalDb() {
           schedules: remoteData.schedules || {},
         };
 
+        isRemoteUpdateRef.current = true;
         setDbState(freshData);
         prevDbRef.current = freshData;
         storage.set(LOCAL_DB_KEY, freshData);
@@ -120,6 +129,240 @@ export function useLocalDb() {
     }
   }, []);
 
+  // Realtime Handlers for granular multi-user sync
+  const handleRemoteOrder = useCallback((payload) => {
+    if (isDeletingRef.current) return;
+    const { eventType, new: newRow, old: oldRow } = payload;
+    const deletedOrderIds = new Set(storage.get(DELETED_ORDERS_KEY) || []);
+
+    if (eventType === "DELETE") {
+      const deletedId = oldRow?.id;
+      if (!deletedId) return;
+      isRemoteUpdateRef.current = true;
+      setDbState((prev) => {
+        const nextOrders = (prev.orders || []).filter((o) => o.id !== deletedId);
+        const nextMachines = (prev.machines || []).map((m) =>
+          m.currentOrderId === deletedId ? { ...m, currentOrderId: null } : m
+        );
+        const nextState = { ...prev, orders: nextOrders, machines: nextMachines };
+        prevDbRef.current = nextState;
+        storage.set(LOCAL_DB_KEY, nextState);
+        return nextState;
+      });
+    } else if (eventType === "INSERT") {
+      if (!newRow?.id || deletedOrderIds.has(newRow.id)) {
+        if (newRow?.id && deletedOrderIds.has(newRow.id)) {
+          deleteFromSupabase("orders", newRow.id);
+        }
+        return;
+      }
+      const incoming = cleanOrder(orderFromDb(newRow));
+      isRemoteUpdateRef.current = true;
+      setDbState((prev) => {
+        if ((prev.orders || []).some((o) => o.id === incoming.id)) return prev;
+        const nextOrders = [...(prev.orders || []), incoming];
+        const nextState = { ...prev, orders: nextOrders };
+        prevDbRef.current = nextState;
+        storage.set(LOCAL_DB_KEY, nextState);
+        return nextState;
+      });
+    } else if (eventType === "UPDATE") {
+      if (!newRow?.id || deletedOrderIds.has(newRow.id)) return;
+      const incoming = cleanOrder(orderFromDb(newRow));
+      isRemoteUpdateRef.current = true;
+      setDbState((prev) => {
+        const nextOrders = (prev.orders || []).map((o) => (o.id === incoming.id ? incoming : o));
+        const nextState = { ...prev, orders: nextOrders };
+        prevDbRef.current = nextState;
+        storage.set(LOCAL_DB_KEY, nextState);
+        return nextState;
+      });
+    }
+  }, []);
+
+  const handleRemoteEmployee = useCallback((payload) => {
+    if (isDeletingRef.current) return;
+    const { eventType, new: newRow, old: oldRow } = payload;
+    const deletedEmpIds = new Set(storage.get(DELETED_EMPLOYEES_KEY) || []);
+
+    if (eventType === "DELETE") {
+      const deletedId = oldRow?.id;
+      if (!deletedId) return;
+      isRemoteUpdateRef.current = true;
+      setDbState((prev) => {
+        const nextEmployees = (prev.employees || []).filter((e) => e.id !== deletedId);
+        const nextState = { ...prev, employees: nextEmployees };
+        prevDbRef.current = nextState;
+        storage.set(LOCAL_DB_KEY, nextState);
+        return nextState;
+      });
+    } else if (eventType === "INSERT") {
+      if (!newRow?.id || deletedEmpIds.has(newRow.id)) {
+        if (newRow?.id && deletedEmpIds.has(newRow.id)) {
+          deleteFromSupabase("employees", newRow.id);
+        }
+        return;
+      }
+      const incoming = employeeFromDb(newRow);
+      isRemoteUpdateRef.current = true;
+      setDbState((prev) => {
+        if ((prev.employees || []).some((e) => e.id === incoming.id)) return prev;
+        const nextEmployees = [...(prev.employees || []), incoming];
+        const nextState = { ...prev, employees: nextEmployees };
+        prevDbRef.current = nextState;
+        storage.set(LOCAL_DB_KEY, nextState);
+        return nextState;
+      });
+    } else if (eventType === "UPDATE") {
+      if (!newRow?.id || deletedEmpIds.has(newRow.id)) return;
+      const incoming = employeeFromDb(newRow);
+      isRemoteUpdateRef.current = true;
+      setDbState((prev) => {
+        const nextEmployees = (prev.employees || []).map((e) => (e.id === incoming.id ? incoming : e));
+        const nextState = { ...prev, employees: nextEmployees };
+        prevDbRef.current = nextState;
+        storage.set(LOCAL_DB_KEY, nextState);
+        return nextState;
+      });
+    }
+  }, []);
+
+  const handleRemoteMold = useCallback((payload) => {
+    if (isDeletingRef.current) return;
+    const { eventType, new: newRow, old: oldRow } = payload;
+    const deletedMoldIds = new Set(storage.get(DELETED_MOLDS_KEY) || []);
+
+    if (eventType === "DELETE") {
+      const deletedId = oldRow?.id;
+      if (!deletedId) return;
+      isRemoteUpdateRef.current = true;
+      setDbState((prev) => {
+        const nextMolds = (prev.molds || []).filter((m) => m.id !== deletedId);
+        const nextMachines = (prev.machines || []).map((m) =>
+          m.moldId === deletedId ? { ...m, moldId: null } : m
+        );
+        const nextState = { ...prev, molds: nextMolds, machines: nextMachines };
+        prevDbRef.current = nextState;
+        storage.set(LOCAL_DB_KEY, nextState);
+        return nextState;
+      });
+    } else if (eventType === "INSERT") {
+      if (!newRow?.id || deletedMoldIds.has(newRow.id)) {
+        if (newRow?.id && deletedMoldIds.has(newRow.id)) {
+          deleteFromSupabase("molds", newRow.id);
+        }
+        return;
+      }
+      const incoming = moldFromDb(newRow);
+      isRemoteUpdateRef.current = true;
+      setDbState((prev) => {
+        if ((prev.molds || []).some((m) => m.id === incoming.id)) return prev;
+        const nextMolds = [...(prev.molds || []), incoming];
+        const nextState = { ...prev, molds: nextMolds };
+        prevDbRef.current = nextState;
+        storage.set(LOCAL_DB_KEY, nextState);
+        return nextState;
+      });
+    } else if (eventType === "UPDATE") {
+      if (!newRow?.id || deletedMoldIds.has(newRow.id)) return;
+      const incoming = moldFromDb(newRow);
+      isRemoteUpdateRef.current = true;
+      setDbState((prev) => {
+        const nextMolds = (prev.molds || []).map((m) => (m.id === incoming.id ? incoming : m));
+        const nextState = { ...prev, molds: nextMolds };
+        prevDbRef.current = nextState;
+        storage.set(LOCAL_DB_KEY, nextState);
+        return nextState;
+      });
+    }
+  }, []);
+
+  const handleRemoteMachine = useCallback((payload) => {
+    if (isDeletingRef.current) return;
+    const { eventType, new: newRow } = payload;
+    if (eventType === "UPDATE" || eventType === "INSERT") {
+      if (!newRow?.id) return;
+      const incoming = machineFromDb(newRow);
+      isRemoteUpdateRef.current = true;
+      setDbState((prev) => {
+        const nextMachines = (prev.machines || []).map((m) => (m.id === incoming.id ? incoming : m));
+        const nextState = { ...prev, machines: nextMachines };
+        prevDbRef.current = nextState;
+        storage.set(LOCAL_DB_KEY, nextState);
+        return nextState;
+      });
+    }
+  }, []);
+
+  const handleRemoteSchedule = useCallback((payload) => {
+    if (isDeletingRef.current) return;
+    const { eventType, new: newRow, old: oldRow } = payload;
+
+    if (eventType === "DELETE") {
+      const targetDate = oldRow?.date;
+      if (!targetDate) return;
+      isRemoteUpdateRef.current = true;
+      setDbState((prev) => {
+        const nextSchedules = { ...(prev.schedules || {}) };
+        delete nextSchedules[targetDate];
+        const nextState = { ...prev, schedules: nextSchedules };
+        prevDbRef.current = nextState;
+        storage.set(LOCAL_DB_KEY, nextState);
+        return nextState;
+      });
+    } else if (eventType === "INSERT" || eventType === "UPDATE") {
+      if (!newRow?.date) return;
+      const remoteSched = scheduleFromDb(newRow);
+      const targetDate = remoteSched.date;
+
+      isRemoteUpdateRef.current = true;
+      setDbState((prev) => {
+        const existing = prev.schedules?.[targetDate];
+        if (!existing) {
+          const nextState = {
+            ...prev,
+            schedules: { ...(prev.schedules || {}), [targetDate]: remoteSched },
+          };
+          prevDbRef.current = nextState;
+          storage.set(LOCAL_DB_KEY, nextState);
+          return nextState;
+        }
+
+        // Granular merge of entries per machine so simultaneous edits from colleagues don't wipe each other
+        const mergedEntries = { ...(existing.entries || {}) };
+        Object.entries(remoteSched.entries || {}).forEach(([mId, rEnt]) => {
+          const lEnt = mergedEntries[mId];
+          if (!lEnt) {
+            mergedEntries[mId] = rEnt;
+          } else {
+            const lTime = lEnt.updatedAt || 0;
+            const rTime = rEnt.updatedAt || 0;
+            if (rTime >= lTime) {
+              mergedEntries[mId] = rEnt;
+            }
+          }
+        });
+
+        const mergedSched = {
+          ...existing,
+          ...remoteSched,
+          entries: mergedEntries,
+        };
+
+        const nextState = {
+          ...prev,
+          schedules: {
+            ...(prev.schedules || {}),
+            [targetDate]: mergedSched,
+          },
+        };
+        prevDbRef.current = nextState;
+        storage.set(LOCAL_DB_KEY, nextState);
+        return nextState;
+      });
+    }
+  }, []);
+
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     reloadFromSupabase();
@@ -128,10 +371,27 @@ export function useLocalDb() {
       reloadFromSupabase();
     };
 
+    // Cross-tab broadcast channel on the same device
+    let broadcast = null;
+    try {
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        broadcast = new BroadcastChannel("pe_scheduler_bus");
+        broadcastRef.current = broadcast;
+        broadcast.onmessage = (e) => {
+          if (e.data?.type === "LOCAL_DB_SYNC" && e.data?.data) {
+            isRemoteUpdateRef.current = true;
+            setDbState(e.data.data);
+            prevDbRef.current = e.data.data;
+          }
+        };
+      }
+    } catch {}
+
     const handleStorage = (e) => {
       if (e.key === LOCAL_DB_KEY && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
+          isRemoteUpdateRef.current = true;
           setDbState(parsed);
           prevDbRef.current = parsed;
         } catch {}
@@ -142,13 +402,63 @@ export function useLocalDb() {
     window.addEventListener("storage", handleStorage);
     const interval = setInterval(reloadFromSupabase, 60000);
 
+    // Multi-user Realtime WebSocket channel setup
+    let channel = null;
+    if (supabase) {
+      channel = supabase
+        .channel("pe_multiuser_room")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "orders" },
+          (payload) => handleRemoteOrder(payload)
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "employees" },
+          (payload) => handleRemoteEmployee(payload)
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "molds" },
+          (payload) => handleRemoteMold(payload)
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "machines" },
+          (payload) => handleRemoteMachine(payload)
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "schedules" },
+          (payload) => handleRemoteSchedule(payload)
+        )
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED") {
+            setSyncStatus("connected");
+          }
+        });
+    }
+
     return () => {
       window.removeEventListener("focus", handleFocus);
       window.removeEventListener("storage", handleStorage);
       clearInterval(interval);
+      if (channel && supabase) {
+        supabase.removeChannel(channel);
+      }
+      if (broadcast) {
+        broadcast.close();
+        broadcastRef.current = null;
+      }
     };
-  }, [reloadFromSupabase]);
-
+  }, [
+    reloadFromSupabase,
+    handleRemoteOrder,
+    handleRemoteEmployee,
+    handleRemoteMold,
+    handleRemoteMachine,
+    handleRemoteSchedule,
+  ]);
 
   // Sync delta changes to Supabase
   const syncChangesToSupabase = useCallback(async (prev, next) => {
@@ -269,8 +579,20 @@ export function useLocalDb() {
         storage.set(LOCAL_DB_KEY, next);
         const previous = prevDbRef.current || prev;
         prevDbRef.current = next;
-        // Start sync immediately
-        syncChangesToSupabase(previous, next);
+
+        // Broadcast to other tabs on the same machine
+        try {
+          if (broadcastRef.current) {
+            broadcastRef.current.postMessage({ type: "LOCAL_DB_SYNC", data: next });
+          }
+        } catch {}
+
+        // Start delta sync immediately if not an incoming remote update
+        if (!isRemoteUpdateRef.current) {
+          syncChangesToSupabase(previous, next);
+        } else {
+          isRemoteUpdateRef.current = false;
+        }
         return next;
       });
     },

@@ -107,27 +107,34 @@ export function Header({ page, setPage }) {
 
         <div className="flex h-10 items-center gap-2 rounded-full border border-line bg-white px-3.5 text-xs font-bold shadow-xs shrink-0">
           {sync?.status === "connected" && (
-            <span className="flex items-center gap-1.5 text-ok" title="Đã kết nối cơ sở dữ liệu Supabase">
-              <span className="h-2 w-2 rounded-full bg-ok" /> Supabase
+            <span className="flex items-center gap-1.5 text-ok" title="Đang đồng bộ trực tiếp đa người dùng (Realtime Live Sync)">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ok opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-ok"></span>
+              </span>
+              <span>{lang === "zh" ? "实时同步" : lang === "en" ? "Live Realtime" : "Trực tiếp (Live)"}</span>
             </span>
           )}
           {sync?.status === "syncing" && (
-            <span className="flex items-center gap-1.5 text-brand" title="Đang đồng bộ dữ liệu...">
-              <span className="h-2 w-2 rounded-full bg-brand animate-pulse" /> Đang lưu…
+            <span className="flex items-center gap-1.5 text-brand" title="Đang lưu thay đổi...">
+              <span className="h-2 w-2 rounded-full bg-brand animate-pulse" />
+              <span>{lang === "zh" ? "保存中…" : lang === "en" ? "Saving…" : "Đang lưu…"}</span>
             </span>
           )}
           {sync?.status === "local" && (
             <span className="flex items-center gap-1.5 text-mute" title="Đang lưu trên trình duyệt (Chưa cấu hình Supabase)">
-              <span className="h-2 w-2 rounded-full bg-mute" /> Cục bộ
+              <span className="h-2 w-2 rounded-full bg-mute" />
+              <span>{lang === "zh" ? "本地存储" : lang === "en" ? "Local" : "Cục bộ"}</span>
             </span>
           )}
           {(sync?.status === "offline" || sync?.status === "error") && (
             <button
               onClick={() => sync?.reload?.()}
-              className="flex items-center gap-1.5 text-bad hover:underline"
-              title="Lỗi kết nối Supabase - Bấm để thử lại"
+              className="flex items-center gap-1.5 text-bad hover:underline cursor-pointer"
+              title="Mất kết nối Supabase - Bấm để kết nối lại"
             >
-              <span className="h-2 w-2 rounded-full bg-bad animate-ping" /> Lỗi DB (Thử lại)
+              <span className="h-2 w-2 rounded-full bg-bad animate-ping" />
+              <span>{lang === "zh" ? "重试连接" : lang === "en" ? "Retry" : "Mất kết nối (Thử lại)"}</span>
             </button>
           )}
         </div>

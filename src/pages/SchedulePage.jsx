@@ -65,8 +65,24 @@ export function SchedulePage() {
     }));
   };
 
-  const handlePatchEntry = (machineId, patch) => applyChange((d) => ({ ...d, entries: { ...d.entries, [machineId]: { ...d.entries[machineId], ...patch } } }));
-  const handleBulkUpdate = (newEntries) => applyChange((d) => ({ ...d, entries: newEntries }));
+  const handlePatchEntry = (machineId, patch) =>
+    applyChange((d) => ({
+      ...d,
+      entries: {
+        ...d.entries,
+        [machineId]: { ...d.entries[machineId], ...patch, updatedAt: Date.now() },
+      },
+    }));
+
+  const handleBulkUpdate = (newEntries) => {
+    const now = Date.now();
+    const stamped = {};
+    Object.entries(newEntries || {}).forEach(([mId, ent]) => {
+      stamped[mId] = { ...ent, updatedAt: now };
+    });
+    applyChange((d) => ({ ...d, entries: stamped }));
+  };
+
   const handleLeaderPatch = (patch) => applyChange((d) => ({ ...d, ...patch }));
 
   const handleUndo = () => {
