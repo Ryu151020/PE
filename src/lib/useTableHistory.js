@@ -10,6 +10,8 @@ export function useTableHistory(initialData, onCommit, limit = 50) {
     if (JSON.stringify(initialData) !== JSON.stringify(presentRef.current)) {
       presentRef.current = initialData;
       setDataState(initialData);
+      pastRef.current = [];
+      futureRef.current = [];
     }
   }, [initialData]);
 

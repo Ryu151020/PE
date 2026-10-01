@@ -75,8 +75,19 @@ export function SearchableSelect({
     });
   };
 
-  const handleOpen = () => {
+  const pointerDownPosRef = useRef(null);
+
+  const handleTriggerMouseDown = (e) => {
+    pointerDownPosRef.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleOpen = (e) => {
     if (disabled) return;
+    if (pointerDownPosRef.current && e && e.clientX !== undefined) {
+      const dx = Math.abs(e.clientX - pointerDownPosRef.current.x);
+      const dy = Math.abs(e.clientY - pointerDownPosRef.current.y);
+      if (dx > 5 || dy > 5) return;
+    }
     updatePosition();
     setOpen((prev) => !prev);
     setSearch("");
@@ -141,12 +152,13 @@ export function SearchableSelect({
   return (
     <div className={`relative inline-block w-full text-sm ${className}`}>
       {cellMode ? (
-        <button
+        <div
           ref={triggerRef}
-          type="button"
-          disabled={disabled}
+          role="button"
+          tabIndex={disabled ? -1 : 0}
+          onMouseDown={handleTriggerMouseDown}
           onClick={handleOpen}
-          className={`flex w-full min-h-[26px] items-center rounded-xs transition-colors cursor-pointer outline-none focus:outline-none border-0 ${
+          className={`flex w-full min-h-[26px] items-center rounded-xs transition-colors cursor-pointer outline-none focus:outline-none border-0 select-none ${
             isMold ? "justify-center text-center" : "justify-start text-left px-1"
           }`}
           title={isMold ? "Bấm để chọn khuôn" : "Bấm để chọn đơn hàng"}
@@ -162,6 +174,7 @@ export function SearchableSelect({
                 </span>
                 {!disabled && (
                   <span
+                    data-no-drag="true"
                     onClick={handleClear}
                     className="opacity-0 group-hover/val:opacity-100 hover:text-bad text-mute transition-opacity p-0.5 cursor-pointer rounded-xs"
                     title="Xóa khuôn"
@@ -185,6 +198,7 @@ export function SearchableSelect({
                 </span>
                 {!disabled && (
                   <span
+                    data-no-drag="true"
                     onClick={handleClear}
                     className="opacity-0 group-hover/val:opacity-100 hover:text-bad text-mute transition-opacity p-0.5 shrink-0 cursor-pointer rounded-xs"
                     title="Xóa đơn hàng"
@@ -201,7 +215,7 @@ export function SearchableSelect({
               <span className="inline-block min-h-[22px] w-full" />
             )
           )}
-        </button>
+        </div>
       ) : (
         <button
           ref={triggerRef}

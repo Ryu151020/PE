@@ -38,9 +38,19 @@ function MachineStatusCell({ machineStatus, onChange, lang, disabled }) {
     });
   };
 
+  const pointerDownPosRef = useRef(null);
+
+  const handlePointerDown = (e) => {
+    pointerDownPosRef.current = { x: e.clientX, y: e.clientY };
+  };
+
   const handleOpen = (e) => {
-    e.stopPropagation();
     if (disabled) return;
+    if (pointerDownPosRef.current && e && e.clientX !== undefined) {
+      const dx = Math.abs(e.clientX - pointerDownPosRef.current.x);
+      const dy = Math.abs(e.clientY - pointerDownPosRef.current.y);
+      if (dx > 5 || dy > 5) return;
+    }
     updatePosition();
     setOpen((prev) => !prev);
   };
@@ -84,16 +94,17 @@ function MachineStatusCell({ machineStatus, onChange, lang, disabled }) {
 
   return (
     <div className="relative inline-flex items-center justify-center w-full">
-      <button
+      <div
         ref={triggerRef}
-        type="button"
-        disabled={disabled}
+        role="button"
+        tabIndex={disabled ? -1 : 0}
+        onMouseDown={handlePointerDown}
         onClick={handleOpen}
         className="cursor-pointer transition-transform hover:scale-105 active:scale-95 focus:outline-none disabled:cursor-not-allowed disabled:transform-none select-none"
         title={disabled ? "" : "Bấm để đổi trạng thái máy"}
       >
         <StackedStatusBadge vi={st?.vi} zh={st?.zh} className={MACHINE_STATUS_COLOR[machineStatus]} />
-      </button>
+      </div>
 
       {open &&
         createPortal(
@@ -124,9 +135,8 @@ function MachineStatusCell({ machineStatus, onChange, lang, disabled }) {
                   }`}
                 >
                   <span
-                    className={`inline-block h-2 w-2 rounded-full shrink-0 ${
-                      k === "OPEN" ? "bg-ok" : k === "STOPPED" ? "bg-bad" : "bg-warn"
-                    }`}
+                    className="inline-block h-2 w-2 rounded-full shrink-0"
+                    style={{ backgroundColor: MACHINE_STATUS_TEXT_COLOR[k] }}
                   />
                   <span style={{ color: MACHINE_STATUS_TEXT_COLOR[k] }}>
                     {getMachineStatusLabel(k, lang)}
@@ -141,7 +151,7 @@ function MachineStatusCell({ machineStatus, onChange, lang, disabled }) {
   );
 }
 
-export function ScheduleRow({ machine, entry, molds, orders, ordersById, editable, activeWorkers, techniciansPool, supportPool, onPatchEntry, selection, onSelectCell, onCellMouseDown, onCellEnter, onDropEmployee, employeesById, dayCollapsed, nightCollapsed }) {
+export function ScheduleRow({ machine, entry, molds, orders, ordersById, editable, activeWorkers, techniciansPool, supportPool, onPatchEntry, selection, onSelectCell, onCellMouseDown, onCellEnter, onDropEmployee, employeesById, dayCollapsed, nightCollapsed, rowHeight }) {
   const { lang = "vi" } = useApp() || {};
   const L0 = 0, L1 = 56, L2 = 176, W0 = 56, W1 = 120, W2 = 140;
   const selInfo = (colKey) => {
@@ -151,8 +161,8 @@ export function ScheduleRow({ machine, entry, molds, orders, ordersById, editabl
   };
   const selected = (colKey) => !!selInfo(colKey);
   const edgeShadow = (colKey) => { const e = selInfo(colKey); if (!e) return null; const p = []; if (e.top) p.push("inset 0 2px 0 0 #4318FF"); if (e.bottom) p.push("inset 0 -2px 0 0 #4318FF"); if (e.left) p.push("inset 2px 0 0 0 #4318FF"); if (e.right) p.push("inset -2px 0 0 0 #4318FF"); return p.length ? p.join(", ") : null; };
-  const selStyle = (colKey) => { const sh = edgeShadow(colKey); return sh ? { boxShadow: sh } : undefined; };
-  const selStickyStyle = (colKey, base) => { const sh = [edgeShadow(colKey), base].filter(Boolean).join(", "); const out = {}; if (sh) out.boxShadow = sh; if (selected(colKey)) out.backgroundColor = "#EFEBFF"; return out; };
+  const selStyle = (colKey) => { const sh = edgeShadow(colKey); const out = { verticalAlign: "middle" }; if (sh) out.boxShadow = sh; return out; };
+  const selStickyStyle = (colKey, base) => { const sh = [edgeShadow(colKey), base].filter(Boolean).join(", "); const out = { verticalAlign: "middle" }; if (sh) out.boxShadow = sh; if (selected(colKey)) out.backgroundColor = "#EFEBFF"; return out; };
   const cellCls = (colKey) => `border-r border-b border-line px-2 py-1.5 align-middle ${selected(colKey) ? "bg-brand-tint" : ""}`;
   const updDay = (patch) => onPatchEntry({ dayShift: { ...entry.dayShift, ...patch } });
   const updNight = (patch) => onPatchEntry({ nightShift: { ...entry.nightShift, ...patch } });
@@ -196,8 +206,8 @@ export function ScheduleRow({ machine, entry, molds, orders, ordersById, editabl
   const effectiveFilmRoll = currentOrder ? (currentOrder.filmRollName || "") : (entry.filmRollName || "");
 
   return (
-    <tr className="group text-sm">
-      <td className="z-10 bg-white group-hover:bg-[#F0F4FE] transition-colors border-r border-b border-line px-2 py-1.5 text-center align-middle text-black font-bold text-[13px]" style={{ position: "sticky", left: L0, width: W0, minWidth: W0, maxWidth: W0 }}>{machine.machineNumber}</td>
+    <tr className="group text-sm" style={{ height: rowHeight ? `${rowHeight}px` : undefined }}>
+      <td className="z-10 bg-white group-hover:bg-[#F0F4FE] transition-colors border-r border-b border-line px-2 py-1.5 text-center align-middle text-black font-bold text-[13px]" style={{ position: "sticky", left: L0, width: W0, minWidth: W0, maxWidth: W0 }}><span>{machine.machineNumber}</span></td>
       <td className={`z-10 bg-white group-hover:bg-[#F0F4FE] transition-colors border-r border-b border-line px-2 py-1.5 text-center align-middle`} style={{ position: "sticky", left: L1, width: W1, minWidth: W1, maxWidth: W1, ...selStickyStyle("machineStatus") }} onMouseDown={(e) => onCellMouseDown(e, "machineStatus", machine.id)} onMouseEnter={() => onCellEnter("machineStatus", machine.id)} onClick={(e) => onSelectCell("machineStatus", machine.id, e.shiftKey)}>
         <MachineStatusCell
           machineStatus={machineStatus}

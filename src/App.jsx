@@ -52,7 +52,7 @@ export default function App() {
   }, []);
   const dismissToast = (id) => setToasts((t) => t.filter((x) => x.id !== id));
 
-  const { db, setDb, sync } = useLocalDb();
+  const { db, setDb, sync, deleteData } = useLocalDb();
 
   const confirmAction = useCallback((message, onConfirm, opts) => {
     setConfirmState({ message, onConfirm, title: opts?.title, confirmLabel: opts?.confirmLabel, danger: opts?.danger });
@@ -64,7 +64,7 @@ export default function App() {
     localStorage.setItem("pe_lang", newLang);
   }, []);
 
-  const ctx = { db, setDb, role, setRole, toasts, pushToast, dismissToast, confirmAction, sync, user, logout, lang, setLang, searchQuery, setSearchQuery };
+  const ctx = { db, setDb, deleteData, role, setRole, toasts, pushToast, dismissToast, confirmAction, sync, user, logout, lang, setLang, searchQuery, setSearchQuery };
 
   return (
     <AppCtx.Provider value={ctx}>

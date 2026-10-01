@@ -18,7 +18,7 @@ import { useTableHistory } from "../lib/useTableHistory";
 import { getOrderStatusLabel, t } from "../lib/i18n";
 
 export function OrdersPage() {
-  const { db, setDb, pushToast, confirmAction, lang = "vi", searchQuery = "" } = useApp();
+  const { db, setDb, deleteData, pushToast, confirmAction, lang = "vi", searchQuery = "" } = useApp();
   const query = searchQuery;
   const [tab, setTab] = useState(() => storage.get("pe_orders_tab") || "open");
   const [addOpen, setAddOpen] = useState(false);
@@ -143,11 +143,15 @@ export function OrdersPage() {
     const sz = String(data.size || "").trim();
     const uniqueId = `ORD-${code}${sz ? `-${sz}` : ""}-${Date.now()}`;
     const newOrder = { id: uniqueId, ...data, orderCode: code, size: sz };
+
+    // Remove from tombstone if it was ever marked deleted
+    const curDel = (storage.get("pe_deleted_order_ids") || []).filter((id) => id !== uniqueId);
+    storage.set("pe_deleted_order_ids", curDel);
+
     setOrdersWithHistory((prev) => [...prev, newOrder]);
     pushToast("Đã thêm đơn hàng / 已新增", "success");
     setAddOpen(false);
 
-    // Kích hoạt đồng bộ tức thì lên Supabase ngay lập tức
     if (isSupabaseConfigured) {
       syncTableToSupabase("orders", [orderToDb(newOrder)]).then((res) => {
         if (!res.ok) {
@@ -160,12 +164,37 @@ export function OrdersPage() {
   const deleteOrder = (o) => {
     confirmAction(
       `Cảnh báo: Bạn có chắc chắn muốn xóa vĩnh viễn đơn hàng "${o.orderCode}" không? / 警告：确定要删除订单 "${o.orderCode}" 吗？`,
-      () => {
-        if (isSupabaseConfigured) {
-          deleteFromSupabase("orders", o.id);
+      async () => {
+        try {
+          // 1. Ghi nhận ngay vào tombstone để bất kỳ tab ngầm nào cũng không thể phục hồi
+          const delIds = new Set(storage.get("pe_deleted_order_ids") || []);
+          delIds.add(o.id);
+          storage.set("pe_deleted_order_ids", Array.from(delIds));
+
+          // 2. Xóa trên Cloud Supabase
+          if (isSupabaseConfigured) {
+            const res = await deleteFromSupabase("orders", o.id);
+            if (!res.ok) {
+              pushToast(`Lỗi xóa đơn hàng trên máy chủ: ${res.error || "Không thể xóa"}`, "error");
+              return;
+            }
+          }
+
+          // 3. Cập nhật state UI và DB
+          setOrdersWithHistory((prev) => prev.filter((x) => x.id !== o.id));
+          setDb((prev) => ({
+            ...prev,
+            orders: (prev.orders || []).filter((x) => x.id !== o.id),
+            machines: (prev.machines || []).map((m) =>
+              m.currentOrderId === o.id ? { ...m, currentOrderId: null } : m
+            ),
+          }));
+
+          pushToast("Đã xóa vĩnh viễn đơn hàng / 已删除", "info");
+        } catch (err) {
+          console.error("Delete order error:", err);
+          pushToast("Lỗi xóa đơn hàng: " + err.message, "error");
         }
-        setOrdersWithHistory((prev) => prev.filter((x) => x.id !== o.id));
-        pushToast("Đã xóa đơn hàng / 已删除", "info");
       },
       {
         title: "Xác nhận xóa đơn hàng / 确认删除",
@@ -175,8 +204,48 @@ export function OrdersPage() {
     );
   };
 
+  const handleDeleteAllOrders = () => {
+    confirmAction(
+      `⚠️ CẢNH BÁO NGUY HIỂM: Bạn có chắc chắn muốn XÓA TOÀN BỘ ${orders.length} đơn hàng trong hệ thống không? Toàn bộ danh sách đơn hàng sẽ bị xóa vĩnh viễn trên Cloud và máy tính!\n\n/ 警告：确定要清空全部 ${orders.length} 个订单吗？此操作无法撤销！`,
+      async () => {
+        try {
+          // 1. Lưu tất cả order ID vào tombstone
+          const delIds = new Set(storage.get("pe_deleted_order_ids") || []);
+          orders.forEach((o) => delIds.add(o.id));
+          storage.set("pe_deleted_order_ids", Array.from(delIds));
+
+          // 2. Xóa toàn bộ qua deleteData
+          if (deleteData) {
+            await deleteData({ mode: "orders" });
+          } else {
+            if (isSupabaseConfigured) {
+              await deleteAllFromSupabase("orders");
+            }
+            setDb((p) => ({ ...p, orders: [] }));
+          }
+          setOrdersWithHistory([]);
+          pushToast(lang === "zh" ? "已彻底清空全部订单！" : lang === "en" ? "All orders deleted permanently!" : "Đã xóa toàn bộ đơn hàng vĩnh viễn!", "success");
+        } catch (err) {
+          console.error("Delete all orders failed:", err);
+          pushToast("Lỗi xóa đơn hàng: " + err.message, "error");
+        }
+      },
+      {
+        title: lang === "zh" ? "确认清空全部订单" : lang === "en" ? "Confirm Delete All Orders" : "Xác nhận xóa toàn bộ đơn hàng",
+        danger: true,
+        confirmLabel: lang === "zh" ? "清空全部" : lang === "en" ? "Delete All" : "Xóa toàn bộ",
+      }
+    );
+  };
+
   const handleExcelImport = async (newOrders) => {
     if (!newOrders || newOrders.length === 0) return;
+
+    // Gỡ các ID mới khỏi tombstone nếu trước đó từng xóa
+    const newIds = new Set(newOrders.map((o) => o.id));
+    const curDel = (storage.get("pe_deleted_order_ids") || []).filter((id) => !newIds.has(id));
+    storage.set("pe_deleted_order_ids", curDel);
+
     setOrdersWithHistory((prev) => [...prev, ...newOrders]);
     pushToast(`Đang đồng bộ ${newOrders.length} đơn hàng lên hệ thống...`, "info");
 
@@ -313,6 +382,17 @@ export function OrdersPage() {
           ]}
         />
         <div className="flex items-center gap-2.5 ml-auto">
+          {orders.length > 0 && (
+            <button
+              type="button"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl text-bad bg-bad-tint hover:bg-bad hover:text-white transition-colors border border-bad/20"
+              onClick={handleDeleteAllOrders}
+              title={lang === "zh" ? "清空全部订单" : lang === "en" ? "Delete All Orders" : "Xóa tất cả đơn hàng"}
+            >
+              <Trash2 size={13} />
+              <span>{lang === "zh" ? "清空全部订单" : lang === "en" ? "Delete All Orders" : "Xóa tất cả đơn hàng"}</span>
+            </button>
+          )}
           <UndoRedoButtons canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
           <AddActionButton
             labelVi="Thêm đơn hàng"

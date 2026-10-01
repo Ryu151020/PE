@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ScheduleRow } from "./ScheduleRow";
 import { ShiftHeader } from "./ShiftHeader";
 import { useApp } from "../../context/AppContext";
@@ -17,6 +17,38 @@ export function ScheduleTable({ machines, molds, orders, ordersById, entries, ed
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef(false);
   const tableRef = useRef(null);
+  const tbodyRef = useRef(null);
+  const [uniformRowHeight, setUniformRowHeight] = useState(null);
+
+  const updateRowHeight = useCallback(() => {
+    if (!tbodyRef.current) return;
+    const trs = Array.from(tbodyRef.current.children);
+    if (!trs.length) return;
+
+    let maxH = 40;
+    for (const tr of trs) {
+      const cellContents = tr.querySelectorAll("td > *");
+      for (const el of cellContents) {
+        if (el.offsetParent === null && el.offsetWidth === 0 && el.offsetHeight === 0) continue;
+        const rect = el.getBoundingClientRect();
+        if (rect.height > 0) {
+          const needed = Math.ceil(rect.height + 14);
+          if (needed > maxH) maxH = needed;
+        }
+      }
+    }
+    setUniformRowHeight((prev) => (prev !== maxH ? maxH : prev));
+  }, []);
+
+  useLayoutEffect(() => {
+    updateRowHeight();
+  });
+
+  useEffect(() => {
+    const handleResize = () => updateRowHeight();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [updateRowHeight]);
   const visibleCols = useMemo(() => ["machineStatus", "mold", "order", "filmRoll", ...(dayCollapsed ? [] : ["dayWorkers", "dayOT", "dayTech", "dayOther"]), ...(nightCollapsed ? [] : ["nightWorkers", "nightOT", "nightTech", "nightOther"])], [dayCollapsed, nightCollapsed]);
   const isEmpCol = (k) => k.endsWith("Workers") || k.endsWith("Tech") || k.endsWith("Other");
   const colType = (k) => (isEmpCol(k) ? "employees" : k.endsWith("OT") ? "ot" : k);
@@ -41,23 +73,56 @@ export function ScheduleTable({ machines, molds, orders, ordersById, entries, ed
   }, [editable, buildSelection]);
 
   const handleCellMouseDown = useCallback((e, colKey, machineId) => {
-    if (!editable || e.button !== 0) return;
-    if (e.target && e.target.closest && e.target.closest('select,input,button,textarea,[draggable="true"]')) return; // controls keep working; their click still selects the cell
+    if (!editable) return;
+    // Allow both left-click (0) and right-click (2) for dragging to select cells
+    if (e.button !== 0 && e.button !== 2) return;
+    if (
+      e.target &&
+      e.target.closest &&
+      e.target.closest('input,textarea,[draggable="true"],.no-drag,[data-no-drag]')
+    ) {
+      return;
+    }
     e.preventDefault();
-    if (document.activeElement && document.activeElement !== document.body && document.activeElement.blur) document.activeElement.blur(); // so Delete/Ctrl+C act on the selection, not a previously focused dropdown
-    if (e.shiftKey) { selectCell(colKey, machineId, true); return; }
-    dragRef.current = true; setDragging(true);
+    if (document.activeElement && document.activeElement !== document.body && document.activeElement.blur) {
+      document.activeElement.blur();
+    }
+    if (e.shiftKey) {
+      selectCell(colKey, machineId, true);
+      return;
+    }
+    dragRef.current = true;
+    setDragging(true);
     selectCell(colKey, machineId, false);
   }, [editable, selectCell]);
+
   const handleCellEnter = useCallback((colKey, machineId) => {
     if (!dragRef.current) return;
     setSelection((prev) => (prev ? buildSelection(prev.anchor, { colKey, machineId }) || prev : prev));
   }, [buildSelection]);
+
   useEffect(() => {
-    const up = () => { if (dragRef.current) { dragRef.current = false; setDragging(false); } };
+    const up = () => {
+      if (dragRef.current) {
+        dragRef.current = false;
+        setDragging(false);
+      }
+    };
+    const handleContextMenu = (e) => {
+      if (tableRef.current && tableRef.current.contains(e.target)) {
+        if (dragRef.current || (selection && selection.machineIds.length > 1)) {
+          e.preventDefault();
+        }
+      }
+    };
     window.addEventListener("mouseup", up);
-    return () => window.removeEventListener("mouseup", up);
-  }, []);
+    document.addEventListener("contextmenu", handleContextMenu);
+    return () => {
+      window.removeEventListener("mouseup", up);
+      document.removeEventListener("contextmenu", handleContextMenu);
+    };
+  }, [selection]);
+
   useEffect(() => { setSelection(null); }, [dayCollapsed, nightCollapsed, dateKey, editable]);
 
   useEffect(() => {
@@ -192,11 +257,11 @@ export function ScheduleTable({ machines, molds, orders, ordersById, entries, ed
         <table ref={tableRef} className="w-full text-sm" style={{ borderCollapse: "separate", borderSpacing: 0, userSelect: dragging ? "none" : undefined }}>
           <ShiftHeader dayData={dayData} employees={employees} employeesById={employeesById} editable={editable} onChangeLeaders={onChangeLeaders}
             dayCollapsed={dayCollapsed} nightCollapsed={nightCollapsed} onToggleDay={() => setDayCollapsed((v) => !v)} onToggleNight={() => setNightCollapsed((v) => !v)} />
-          <tbody>
+          <tbody ref={tbodyRef}>
             {machines.map((machine) => (
               <ScheduleRow key={machine.id} machine={machine} entry={entries[machine.id]} molds={molds} orders={orders} ordersById={ordersById} editable={editable} activeWorkers={activeWorkers} techniciansPool={techniciansPool} supportPool={supportPool} employeesById={employeesById}
                 onPatchEntry={(patch) => onPatchEntry(machine.id, patch)} selection={selection} onSelectCell={(colKey, id, shift) => selectCell(colKey, id, shift)} onCellMouseDown={handleCellMouseDown} onCellEnter={handleCellEnter} onDropEmployee={(colKey, payload) => handleDropEmployee(machine.id, colKey, payload)}
-                dayCollapsed={dayCollapsed} nightCollapsed={nightCollapsed} />
+                dayCollapsed={dayCollapsed} nightCollapsed={nightCollapsed} rowHeight={uniformRowHeight} />
             ))}
           </tbody>
         </table>

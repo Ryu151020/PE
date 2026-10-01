@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  bulkDeleteFromSupabase,
+  deleteAllFromSupabase,
   deleteFromSupabase,
   employeeToDb,
   fetchFullDatabase,
@@ -11,12 +13,19 @@ import {
   syncTableToSupabase,
 } from "../lib/supabase";
 import { createBlankDb } from "../lib/seed";
+import { inRange } from "../lib/dates";
 import { storage } from "./storage";
 
-const LOCAL_DB_KEY = "pe_local_db_v2";
+const LOCAL_DB_KEY = "pe_local_db_v4";
 const DELETED_ORDERS_KEY = "pe_deleted_order_ids";
 const DELETED_EMPLOYEES_KEY = "pe_deleted_employee_ids";
 const DELETED_MOLDS_KEY = "pe_deleted_mold_ids";
+const DELETED_SCHEDULES_KEY = "pe_deleted_schedule_dates";
+
+// Clean up legacy storage versions
+try {
+  ["pe_local_db", "pe_local_db_v2", "pe_local_db_v3"].forEach((k) => storage.remove(k));
+} catch {}
 
 const cleanOrder = (o) => {
   if (!o || !o.orderCode) return o;
@@ -47,145 +56,66 @@ export function useLocalDb() {
   );
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
   const prevDbRef = useRef(db);
+  const isDeletingRef = useRef(false);
 
   // Fetch full data from Supabase on mount if configured
   const reloadFromSupabase = useCallback(async () => {
-    if (!isSupabaseConfigured) {
-      setSyncStatus("local");
+    if (!isSupabaseConfigured || isDeletingRef.current) {
+      if (!isSupabaseConfigured) setSyncStatus("local");
       return;
     }
 
     try {
       setSyncStatus("syncing");
       const remoteData = await fetchFullDatabase();
-      if (remoteData) {
-        const localCached = storage.get(LOCAL_DB_KEY);
-
-        // 1. Intelligently merge schedules so locally saved/cached schedules are never wiped out
-        const mergedSchedules = { ...(remoteData.schedules || {}) };
-        if (localCached?.schedules) {
-          Object.entries(localCached.schedules).forEach(([d, locSched]) => {
-            if (!locSched) return;
-            const remSched = remoteData.schedules?.[d];
-            if (!remSched) {
-              mergedSchedules[d] = locSched;
-            } else if (locSched.updatedAt && remSched.updatedAt) {
-              if (new Date(locSched.updatedAt) > new Date(remSched.updatedAt)) {
-                mergedSchedules[d] = locSched;
-              }
-            }
-          });
-        }
-
-        // 2. Orders merge: Remote + Local (excluding deleted items in tombstone)
+      if (remoteData && !isDeletingRef.current) {
         const deletedOrderIds = new Set(storage.get(DELETED_ORDERS_KEY) || []);
-        const remoteOrderMap = new Map();
-        (remoteData.orders || []).forEach((o) => {
+        const deletedEmpIds = new Set(storage.get(DELETED_EMPLOYEES_KEY) || []);
+        const deletedMoldIds = new Set(storage.get(DELETED_MOLDS_KEY) || []);
+
+        // Filter out any ghost rows that were deleted locally
+        const validOrders = (remoteData.orders || []).filter((o) => {
           if (deletedOrderIds.has(o.id)) {
             deleteFromSupabase("orders", o.id);
-          } else {
-            remoteOrderMap.set(o.id, cleanOrder(o));
+            return false;
           }
+          return true;
         });
 
-        const pendingOrders = [];
-        if (localCached?.orders) {
-          localCached.orders.forEach((loc) => {
-            if (deletedOrderIds.has(loc.id)) return;
-            if (!remoteOrderMap.has(loc.id)) {
-              const cleaned = cleanOrder(loc);
-              remoteOrderMap.set(loc.id, cleaned);
-              pendingOrders.push(cleaned);
-            }
-          });
-        }
-        const mergedOrders = Array.from(remoteOrderMap.values()).map(cleanOrder);
-
-        // 3. Employees merge
-        const deletedEmpIds = new Set(storage.get(DELETED_EMPLOYEES_KEY) || []);
-        const remoteEmpMap = new Map();
-        (remoteData.employees || []).forEach((e) => {
+        const validEmployees = (remoteData.employees || []).filter((e) => {
           if (deletedEmpIds.has(e.id)) {
             deleteFromSupabase("employees", e.id);
-          } else {
-            remoteEmpMap.set(e.id, e);
+            return false;
           }
+          return true;
         });
-        const pendingEmployees = [];
-        if (localCached?.employees) {
-          localCached.employees.forEach((loc) => {
-            if (deletedEmpIds.has(loc.id)) return;
-            if (!remoteEmpMap.has(loc.id)) {
-              remoteEmpMap.set(loc.id, loc);
-              pendingEmployees.push(loc);
-            }
-          });
-        }
-        const mergedEmployees = Array.from(remoteEmpMap.values());
 
-        // 4. Molds merge
-        const deletedMoldIds = new Set(storage.get(DELETED_MOLDS_KEY) || []);
-        const remoteMoldMap = new Map();
-        (remoteData.molds || []).forEach((m) => {
+        const validMolds = (remoteData.molds || []).filter((m) => {
           if (deletedMoldIds.has(m.id)) {
             deleteFromSupabase("molds", m.id);
-          } else {
-            remoteMoldMap.set(m.id, m);
+            return false;
           }
+          return true;
         });
-        const pendingMolds = [];
-        if (localCached?.molds) {
-          localCached.molds.forEach((loc) => {
-            if (deletedMoldIds.has(loc.id)) return;
-            if (!remoteMoldMap.has(loc.id)) {
-              remoteMoldMap.set(loc.id, loc);
-              pendingMolds.push(loc);
-            }
-          });
-        }
-        const mergedMolds = Array.from(remoteMoldMap.values());
 
-        const mergedData = {
-          ...remoteData,
-          orders: mergedOrders,
-          employees: mergedEmployees,
-          molds: mergedMolds,
+        const cleanedOrders = validOrders.map(cleanOrder);
+        const freshData = {
+          employees: validEmployees,
+          molds: validMolds,
+          orders: cleanedOrders,
           machines: remoteData.machines || [],
-          schedules: mergedSchedules,
+          schedules: remoteData.schedules || {},
         };
 
-        setDbState(mergedData);
-        prevDbRef.current = mergedData;
-        storage.set(LOCAL_DB_KEY, mergedData);
+        setDbState(freshData);
+        prevDbRef.current = freshData;
+        storage.set(LOCAL_DB_KEY, freshData);
 
         setSyncStatus("connected");
         setLastSyncedAt(Date.now());
-
-        // Background sync: push any locally pending rows up to Supabase
-        if (pendingOrders.length > 0) {
-          syncTableToSupabase("orders", pendingOrders.map(orderToDb));
-        }
-        if (pendingEmployees.length > 0) {
-          syncTableToSupabase("employees", pendingEmployees.map(employeeToDb));
-        }
-        if (pendingMolds.length > 0) {
-          syncTableToSupabase("molds", pendingMolds.map(moldToDb));
-        }
-
-        // Background sync: push any locally cached schedules that are newer in local
-        if (localCached?.schedules) {
-          for (const [k, s] of Object.entries(localCached.schedules)) {
-            if (!s) continue;
-            const remSched = remoteData.schedules?.[k];
-            if (!remSched || (s.updatedAt && (!remSched.updatedAt || new Date(s.updatedAt) > new Date(remSched.updatedAt)))) {
-              const row = scheduleToDb(k, s);
-              syncTableToSupabase("schedules", [row], "date");
-            }
-          }
-        }
       }
     } catch (err) {
-      console.warn("Supabase initial fetch failed, using local cache:", err);
+      console.warn("Supabase fetch failed, keeping local state:", err);
       setSyncStatus("offline");
     }
   }, []);
@@ -198,68 +128,85 @@ export function useLocalDb() {
       reloadFromSupabase();
     };
 
+    const handleStorage = (e) => {
+      if (e.key === LOCAL_DB_KEY && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          setDbState(parsed);
+          prevDbRef.current = parsed;
+        } catch {}
+      }
+    };
+
     window.addEventListener("focus", handleFocus);
+    window.addEventListener("storage", handleStorage);
     const interval = setInterval(reloadFromSupabase, 60000);
 
     return () => {
       window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("storage", handleStorage);
       clearInterval(interval);
     };
   }, [reloadFromSupabase]);
 
+
   // Sync delta changes to Supabase
   const syncChangesToSupabase = useCallback(async (prev, next) => {
-    if (!isSupabaseConfigured) return;
+    if (!isSupabaseConfigured || isDeletingRef.current) return;
 
     try {
       setSyncStatus("syncing");
 
       // 1. Employees changed
       if (prev.employees !== next.employees) {
-        if (next.employees.length > 0) {
-          const rows = next.employees.map(employeeToDb);
-          await syncTableToSupabase("employees", rows);
+        const deletedEmpIds = new Set(storage.get(DELETED_EMPLOYEES_KEY) || []);
+        const prevMap = new Map((prev.employees || []).map((e) => [e.id, e]));
+        const changed = (next.employees || []).filter((e) => {
+          if (deletedEmpIds.has(e.id)) return false;
+          const p = prevMap.get(e.id);
+          return p && JSON.stringify(p) !== JSON.stringify(e);
+        });
+        if (changed.length > 0) {
+          await syncTableToSupabase("employees", changed.map(employeeToDb));
         }
         // Handle deletions
-        const nextIds = new Set(next.employees.map((e) => e.id));
-        const removed = prev.employees.filter((e) => !nextIds.has(e.id));
-        for (const r of removed) {
-          const delIds = storage.get(DELETED_EMPLOYEES_KEY) || [];
-          if (!delIds.includes(r.id)) {
-            storage.set(DELETED_EMPLOYEES_KEY, [...delIds, r.id]);
-          }
-          const res = await deleteFromSupabase("employees", r.id);
-          if (res.ok) {
-            const cur = (storage.get(DELETED_EMPLOYEES_KEY) || []).filter((id) => id !== r.id);
-            storage.set(DELETED_EMPLOYEES_KEY, cur);
-          }
+        const nextIds = new Set((next.employees || []).map((e) => e.id));
+        const removed = (prev.employees || []).filter((e) => !nextIds.has(e.id));
+        if (removed.length > 0) {
+          const removedIds = removed.map((r) => r.id);
+          const curDel = new Set(storage.get(DELETED_EMPLOYEES_KEY) || []);
+          removedIds.forEach((id) => curDel.add(id));
+          storage.set(DELETED_EMPLOYEES_KEY, Array.from(curDel));
+          await bulkDeleteFromSupabase("employees", removedIds);
         }
       }
 
       // 2. Molds changed
       if (prev.molds !== next.molds) {
-        if (next.molds.length > 0) {
-          const rows = next.molds.map(moldToDb);
-          await syncTableToSupabase("molds", rows);
+        const deletedMoldIds = new Set(storage.get(DELETED_MOLDS_KEY) || []);
+        const prevMap = new Map((prev.molds || []).map((m) => [m.id, m]));
+        const changed = (next.molds || []).filter((m) => {
+          if (deletedMoldIds.has(m.id)) return false;
+          const p = prevMap.get(m.id);
+          return p && JSON.stringify(p) !== JSON.stringify(m);
+        });
+        if (changed.length > 0) {
+          await syncTableToSupabase("molds", changed.map(moldToDb));
         }
-        const nextIds = new Set(next.molds.map((m) => m.id));
-        const removed = prev.molds.filter((m) => !nextIds.has(m.id));
-        for (const r of removed) {
-          const delIds = storage.get(DELETED_MOLDS_KEY) || [];
-          if (!delIds.includes(r.id)) {
-            storage.set(DELETED_MOLDS_KEY, [...delIds, r.id]);
-          }
-          const res = await deleteFromSupabase("molds", r.id);
-          if (res.ok) {
-            const cur = (storage.get(DELETED_MOLDS_KEY) || []).filter((id) => id !== r.id);
-            storage.set(DELETED_MOLDS_KEY, cur);
-          }
+        const nextIds = new Set((next.molds || []).map((m) => m.id));
+        const removed = (prev.molds || []).filter((m) => !nextIds.has(m.id));
+        if (removed.length > 0) {
+          const removedIds = removed.map((r) => r.id);
+          const curDel = new Set(storage.get(DELETED_MOLDS_KEY) || []);
+          removedIds.forEach((id) => curDel.add(id));
+          storage.set(DELETED_MOLDS_KEY, Array.from(curDel));
+          await bulkDeleteFromSupabase("molds", removedIds);
         }
       }
 
       // 3. Machines changed
       if (prev.machines !== next.machines) {
-        if (next.machines.length > 0) {
+        if (next.machines && next.machines.length > 0) {
           const rows = next.machines.map(machineToDb);
           await syncTableToSupabase("machines", rows);
         }
@@ -267,22 +214,24 @@ export function useLocalDb() {
 
       // 4. Orders changed
       if (prev.orders !== next.orders) {
-        if (next.orders.length > 0) {
-          const rows = next.orders.map(orderToDb);
-          await syncTableToSupabase("orders", rows);
+        const deletedOrderIds = new Set(storage.get(DELETED_ORDERS_KEY) || []);
+        const prevMap = new Map((prev.orders || []).map((o) => [o.id, o]));
+        const changed = (next.orders || []).filter((o) => {
+          if (deletedOrderIds.has(o.id)) return false;
+          const p = prevMap.get(o.id);
+          return p && JSON.stringify(p) !== JSON.stringify(o);
+        });
+        if (changed.length > 0) {
+          await syncTableToSupabase("orders", changed.map(orderToDb));
         }
-        const nextIds = new Set(next.orders.map((o) => o.id));
-        const removed = prev.orders.filter((o) => !nextIds.has(o.id));
-        for (const r of removed) {
-          const delIds = storage.get(DELETED_ORDERS_KEY) || [];
-          if (!delIds.includes(r.id)) {
-            storage.set(DELETED_ORDERS_KEY, [...delIds, r.id]);
-          }
-          const res = await deleteFromSupabase("orders", r.id);
-          if (res.ok) {
-            const cur = (storage.get(DELETED_ORDERS_KEY) || []).filter((id) => id !== r.id);
-            storage.set(DELETED_ORDERS_KEY, cur);
-          }
+        const nextIds = new Set((next.orders || []).map((o) => o.id));
+        const removed = (prev.orders || []).filter((o) => !nextIds.has(o.id));
+        if (removed.length > 0) {
+          const removedIds = removed.map((r) => r.id);
+          const curDel = new Set(storage.get(DELETED_ORDERS_KEY) || []);
+          removedIds.forEach((id) => curDel.add(id));
+          storage.set(DELETED_ORDERS_KEY, Array.from(curDel));
+          await bulkDeleteFromSupabase("orders", removedIds);
         }
       }
 
@@ -300,8 +249,8 @@ export function useLocalDb() {
         const prevKeys = Object.keys(prev.schedules || {});
         const nextKeysSet = new Set(nextKeys);
         const removedKeys = prevKeys.filter((k) => !nextKeysSet.has(k) || !next.schedules[k]);
-        for (const k of removedKeys) {
-          await deleteFromSupabase("schedules", k);
+        if (removedKeys.length > 0) {
+          await bulkDeleteFromSupabase("schedules", removedKeys);
         }
       }
 
@@ -328,6 +277,196 @@ export function useLocalDb() {
     [syncChangesToSupabase]
   );
 
+  const deleteData = useCallback(
+    async ({ mode, range, includeLocked = true }) => {
+      isDeletingRef.current = true;
+      setSyncStatus("syncing");
+
+      try {
+        if (mode === "everything") {
+          // 1. Clear Supabase tables
+          if (isSupabaseConfigured) {
+            await syncTableToSupabase(
+              "machines",
+              (db.machines || []).map((m) => machineToDb({ ...m, moldId: null, currentOrderId: null }))
+            );
+            const r1 = await deleteAllFromSupabase("schedules");
+            const r2 = await deleteAllFromSupabase("orders");
+            const r3 = await deleteAllFromSupabase("molds");
+            const r4 = await deleteAllFromSupabase("employees");
+            if (!r1.ok || !r2.ok || !r3.ok || !r4.ok) {
+              const err = r1.error || r2.error || r3.error || r4.error;
+              console.error("Supabase deleteAll failed:", err);
+              throw new Error("Lỗi xóa dữ liệu trên máy chủ: " + err);
+            }
+          }
+
+          // 2. Record all deleted IDs into tombstones to permanently block background resurrection
+          const oldOrderIds = (db.orders || []).map((o) => o.id);
+          const oldEmpIds = (db.employees || []).map((e) => e.id);
+          const oldMoldIds = (db.molds || []).map((m) => m.id);
+          storage.set(DELETED_ORDERS_KEY, [...new Set([...(storage.get(DELETED_ORDERS_KEY) || []), ...oldOrderIds])]);
+          storage.set(DELETED_EMPLOYEES_KEY, [...new Set([...(storage.get(DELETED_EMPLOYEES_KEY) || []), ...oldEmpIds])]);
+          storage.set(DELETED_MOLDS_KEY, [...new Set([...(storage.get(DELETED_MOLDS_KEY) || []), ...oldMoldIds])]);
+          storage.remove(DELETED_SCHEDULES_KEY);
+
+          // Clear legacy caches
+          ["pe_local_db", "pe_local_db_v2", "pe_local_db_v3"].forEach((k) => storage.remove(k));
+
+          // 3. Update local DB
+          const blankDb = {
+            ...db,
+            employees: [],
+            molds: [],
+            orders: [],
+            schedules: {},
+            machines: (db.machines || []).map((m) => ({ ...m, moldId: null, currentOrderId: null })),
+          };
+          storage.set(LOCAL_DB_KEY, blankDb);
+          setDbState(blankDb);
+          prevDbRef.current = blankDb;
+        } else if (mode === "allPlans") {
+          // Delete ALL schedules
+          if (isSupabaseConfigured) {
+            const res = await deleteAllFromSupabase("schedules");
+            if (!res.ok) throw new Error("Lỗi xóa kế hoạch trên máy chủ: " + res.error);
+          }
+          storage.remove(DELETED_SCHEDULES_KEY);
+
+          const nextDb = { ...db, schedules: {} };
+          storage.set(LOCAL_DB_KEY, nextDb);
+          setDbState(nextDb);
+          prevDbRef.current = nextDb;
+        } else if (mode === "orders") {
+          // Delete ALL orders
+          if (isSupabaseConfigured) {
+            // Delete orders in Supabase first
+            const res = await deleteAllFromSupabase("orders");
+            if (!res.ok) throw new Error("Lỗi xóa đơn hàng trên máy chủ: " + res.error);
+
+            // Null out currentOrderId on machines
+            const updatedMachines = (db.machines || []).map((m) => ({ ...m, currentOrderId: null }));
+            await syncTableToSupabase("machines", updatedMachines.map(machineToDb));
+
+            // Clear orderId and filmRollName in schedules in memory and Supabase
+            const updatedSchedules = {};
+            for (const [d, sched] of Object.entries(db.schedules || {})) {
+              if (sched && sched.entries) {
+                const updatedEntries = {};
+                Object.entries(sched.entries).forEach(([mId, ent]) => {
+                  updatedEntries[mId] = { ...ent, orderId: null, filmRollName: "" };
+                });
+                updatedSchedules[d] = { ...sched, entries: updatedEntries };
+              } else {
+                updatedSchedules[d] = sched;
+              }
+            }
+            const schedRows = Object.entries(updatedSchedules).map(([d, s]) => scheduleToDb(d, s));
+            if (schedRows.length > 0) {
+              await syncTableToSupabase("schedules", schedRows, "date");
+            }
+          }
+
+          // Retain all deleted order IDs in tombstone so any stale background tab's resurrection is blocked
+          const oldOrderIds = (db.orders || []).map((o) => o.id);
+          const curDel = new Set(storage.get(DELETED_ORDERS_KEY) || []);
+          oldOrderIds.forEach((id) => curDel.add(id));
+          storage.set(DELETED_ORDERS_KEY, Array.from(curDel));
+
+          // Purge legacy caches
+          ["pe_local_db", "pe_local_db_v2", "pe_local_db_v3"].forEach((k) => storage.remove(k));
+
+          const nextDb = {
+            ...db,
+            orders: [],
+            machines: (db.machines || []).map((m) => ({ ...m, currentOrderId: null })),
+          };
+          storage.set(LOCAL_DB_KEY, nextDb);
+          setDbState(nextDb);
+          prevDbRef.current = nextDb;
+        } else if (mode === "employees") {
+          // Delete ALL employees
+          if (isSupabaseConfigured) {
+            const res = await deleteAllFromSupabase("employees");
+            if (!res.ok) throw new Error("Lỗi xóa nhân sự trên máy chủ: " + res.error);
+          }
+          const oldEmpIds = (db.employees || []).map((e) => e.id);
+          const curDel = new Set(storage.get(DELETED_EMPLOYEES_KEY) || []);
+          oldEmpIds.forEach((id) => curDel.add(id));
+          storage.set(DELETED_EMPLOYEES_KEY, Array.from(curDel));
+
+          ["pe_local_db", "pe_local_db_v2", "pe_local_db_v3"].forEach((k) => storage.remove(k));
+
+          const nextDb = { ...db, employees: [] };
+          storage.set(LOCAL_DB_KEY, nextDb);
+          setDbState(nextDb);
+          prevDbRef.current = nextDb;
+        } else if (mode === "molds") {
+          // Delete ALL molds
+          if (isSupabaseConfigured) {
+            await syncTableToSupabase(
+              "machines",
+              (db.machines || []).map((m) => machineToDb({ ...m, moldId: null }))
+            );
+            const res = await deleteAllFromSupabase("molds");
+            if (!res.ok) throw new Error("Lỗi xóa khuôn trên máy chủ: " + res.error);
+          }
+          const oldMoldIds = (db.molds || []).map((m) => m.id);
+          const curDel = new Set(storage.get(DELETED_MOLDS_KEY) || []);
+          oldMoldIds.forEach((id) => curDel.add(id));
+          storage.set(DELETED_MOLDS_KEY, Array.from(curDel));
+
+          ["pe_local_db", "pe_local_db_v2", "pe_local_db_v3"].forEach((k) => storage.remove(k));
+
+          const nextDb = {
+            ...db,
+            molds: [],
+            machines: (db.machines || []).map((m) => ({ ...m, moldId: null })),
+          };
+          storage.set(LOCAL_DB_KEY, nextDb);
+          setDbState(nextDb);
+          prevDbRef.current = nextDb;
+        } else {
+          // Mode "range"
+          const targetDates = Object.entries(db.schedules || {})
+            .filter(([d, s]) => {
+              if (!s) return false;
+              if (!includeLocked && s.status === "LOCKED") return false;
+              if (range && !inRange(d, range.from, range.to)) return false;
+              return true;
+            })
+            .map(([d]) => d);
+
+          if (targetDates.length > 0) {
+            if (isSupabaseConfigured) {
+              const res = await bulkDeleteFromSupabase("schedules", targetDates);
+              if (!res.ok) throw new Error("Lỗi xóa lịch trên máy chủ: " + res.error);
+            }
+
+            const targetSet = new Set(targetDates);
+            const nextSchedules = {};
+            Object.entries(db.schedules || {}).forEach(([d, s]) => {
+              if (!targetSet.has(d)) nextSchedules[d] = s;
+            });
+
+            const nextDb = { ...db, schedules: nextSchedules };
+            storage.set(LOCAL_DB_KEY, nextDb);
+            setDbState(nextDb);
+            prevDbRef.current = nextDb;
+          }
+        }
+
+        setSyncStatus("connected");
+        setLastSyncedAt(Date.now());
+      } finally {
+        setTimeout(() => {
+          isDeletingRef.current = false;
+        }, 3000);
+      }
+    },
+    [db]
+  );
+
   const sync = {
     status: syncStatus,
     lastSyncedAt,
@@ -336,5 +475,5 @@ export function useLocalDb() {
     retryBoot: reloadFromSupabase,
   };
 
-  return { db, setDb, sync };
+  return { db, setDb, sync, deleteData };
 }

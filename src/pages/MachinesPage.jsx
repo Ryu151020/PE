@@ -113,7 +113,7 @@ export function MachinesPage() {
       `Cảnh báo: Bạn có chắc chắn muốn xóa vĩnh viễn khuôn "${m.moldName}"? / 警告：确定要删除模具 "${m.moldName}" 吗？`,
       () => {
         setMoldsWithHistory((prev) => prev.filter((x) => x.id !== m.id));
-        if (isSupabaseConfigured() && m.id) {
+        if (isSupabaseConfigured && m.id) {
           deleteFromSupabase("molds", m.id);
         }
         pushToast("Đã xóa khuôn / 已删除", "info");

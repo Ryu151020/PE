@@ -250,7 +250,7 @@ export function EmployeeMultiSelect({ candidates, selectedIds, editable, onChang
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 min-h-[26px] rounded-xs" onDragOver={handleDragOver} onDrop={handleDrop} onDragStartCapture={closeAllPopovers}>
+    <div className="inline-flex w-full min-h-[26px] flex-wrap items-center content-center align-middle gap-1.5 rounded-xs" onDragOver={handleDragOver} onDrop={handleDrop} onDragStartCapture={closeAllPopovers}>
       {visible.map((emp) => (
         <EmployeeChip key={emp.id} employee={emp} editable={editable} onRemove={() => remove(emp.id)}
           draggable={editable && !!dragContext}
@@ -260,6 +260,7 @@ export function EmployeeMultiSelect({ candidates, selectedIds, editable, onChang
         <span className="relative">
           <button
             ref={expandTriggerRef}
+            data-no-drag="true"
             className="rounded-xs bg-line px-1.5 py-0.5 text-xs font-semibold text-body hover:bg-line-deep cursor-pointer"
             onClick={handleToggleExpand}
           >
@@ -297,6 +298,7 @@ export function EmployeeMultiSelect({ candidates, selectedIds, editable, onChang
         <span className="relative">
           <button
             ref={addTriggerRef}
+            data-no-drag="true"
             className={`flex h-[22px] w-[22px] items-center justify-center rounded-xs border border-dashed border-line2 text-mute hover:border-brand hover:text-brand transition-opacity cursor-pointer ${
               addOpen ? "opacity-100 border-brand text-brand" : "opacity-0 group-hover:opacity-100"
             }`}

@@ -14,6 +14,7 @@ function AuthGate() {
   return isAuthed ? <App /> : <LoginPage />;
 }
 
+// Cache v4 release
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <ErrorBoundary>
@@ -25,3 +26,4 @@ createRoot(document.getElementById("root")).render(
     </ErrorBoundary>
   </StrictMode>
 );
+

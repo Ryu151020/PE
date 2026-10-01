@@ -143,7 +143,7 @@ export function EmployeesPage() {
       `Cảnh báo: Bạn có chắc chắn muốn xóa vĩnh viễn nhân sự "${e.vietnameseName} (${e.employeeCode})"? / 警告：确定要删除员工 "${e.vietnameseName} (${e.employeeCode})" 吗？`,
       () => {
         setEmployeesWithHistory((prev) => prev.filter((x) => x.id !== e.id));
-        if (isSupabaseConfigured() && e.id) {
+        if (isSupabaseConfigured && e.id) {
           deleteFromSupabase("employees", e.id);
         }
         pushToast(`Đã xóa nhân sự ${e.vietnameseName} / 已删除`, "info");
@@ -379,7 +379,10 @@ export function EmployeesPage() {
           <table ref={tableRef} className="w-full text-sm border-separate border-spacing-0">
             <thead className="pe-thead text-sm sticky top-0 z-10 bg-[#F8FAFC] shadow-xs">
               <tr className="h-10">
-                <th className="px-3 py-2 text-center align-middle font-bold text-black text-sm whitespace-nowrap w-12 min-w-[50px] bg-[#F8FAFC] border-l border-b border-r border-line">
+                <th
+                  className="px-3 py-2 text-center align-middle font-bold text-black text-sm whitespace-nowrap bg-[#F8FAFC] border-l border-b border-r border-line z-30"
+                  style={{ position: "sticky", left: 0, top: 0, width: 50, minWidth: 50, maxWidth: 50 }}
+                >
                   STT
                 </th>
                 <SortableTh
@@ -391,7 +394,8 @@ export function EmployeesPage() {
                   filterValue={filters.employeeCode}
                   onFilterChange={handleFilterChange}
                   data={tabEmployees}
-                  className="min-w-[110px]"
+                  className="z-30"
+                  style={{ position: "sticky", left: 50, top: 0, width: 120, minWidth: 120, maxWidth: 120 }}
                 />
                 <SortableTh
                   labelVi="Tên VN"
@@ -402,7 +406,8 @@ export function EmployeesPage() {
                   filterValue={filters.vietnameseName}
                   onFilterChange={handleFilterChange}
                   data={tabEmployees}
-                  className="min-w-[210px]"
+                  className="z-30"
+                  style={{ position: "sticky", left: 170, top: 0, width: 210, minWidth: 210, maxWidth: 210, boxShadow: "4px 0 8px -4px rgba(112,144,176,0.28)" }}
                 />
                 <SortableTh
                   labelVi="Tên Trung"
@@ -525,18 +530,29 @@ export function EmployeesPage() {
             </thead>
             <tbody>
               {filteredAndSortedList.map((e, idx) => (
-                <tr key={e.id} className="hover:bg-canvas">
-                  <td className="px-2 py-2 text-center align-middle text-black font-semibold text-sm border-l border-b border-r border-line">
+                <tr key={e.id} className="group hover:bg-[#F4F7FE] transition-colors">
+                  <td
+                    className="z-10 bg-white group-hover:bg-[#F4F7FE] transition-colors px-2 py-2 text-center align-middle text-black font-semibold text-sm border-l border-b border-r border-line"
+                    style={{ position: "sticky", left: 0, width: 50, minWidth: 50, maxWidth: 50 }}
+                  >
                     {idx + 1}
                   </td>
-                  <td className={`px-2 py-2 align-middle border-b border-r border-line ${selCls(e.id, "employeeCode")}`} onClick={() => setSelected({ rowId: e.id, colKey: "employeeCode" })}>
+                  <td
+                    className={`z-10 ${isSel(e.id, "employeeCode") ? "!bg-brand-tint" : "bg-white group-hover:bg-[#F4F7FE]"} transition-colors px-2 py-2 align-middle border-b border-r border-line ${selCls(e.id, "employeeCode")}`}
+                    style={{ position: "sticky", left: 50, width: 120, minWidth: 120, maxWidth: 120 }}
+                    onClick={() => setSelected({ rowId: e.id, colKey: "employeeCode" })}
+                  >
                     <input
                       className={`${inputCls} v-input--sm v-input--ghost font-bold text-sm`}
                       value={e.employeeCode}
                       onChange={(ev) => updateEmployee(e.id, { employeeCode: ev.target.value })}
                     />
                   </td>
-                  <td className={`px-2 py-2 align-middle min-w-[210px] border-b border-r border-line ${selCls(e.id, "vietnameseName")}`} onClick={() => setSelected({ rowId: e.id, colKey: "vietnameseName" })}>
+                  <td
+                    className={`z-10 ${isSel(e.id, "vietnameseName") ? "!bg-brand-tint" : "bg-white group-hover:bg-[#F4F7FE]"} transition-colors px-2 py-2 align-middle border-b border-r border-line ${selCls(e.id, "vietnameseName")}`}
+                    style={{ position: "sticky", left: 170, width: 210, minWidth: 210, maxWidth: 210, boxShadow: "4px 0 8px -4px rgba(112,144,176,0.28)" }}
+                    onClick={() => setSelected({ rowId: e.id, colKey: "vietnameseName" })}
+                  >
                     <input
                       className={`${inputCls} v-input--sm text-sm font-medium`}
                       value={e.vietnameseName}

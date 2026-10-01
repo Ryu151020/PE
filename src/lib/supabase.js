@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
+const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || (typeof process !== "undefined" ? process.env?.VITE_SUPABASE_URL : "") || "";
+const supabaseAnonKey = import.meta.env?.VITE_SUPABASE_ANON_KEY || (typeof process !== "undefined" ? process.env?.VITE_SUPABASE_ANON_KEY : "") || "";
 
 export const isSupabaseConfigured = Boolean(
   supabaseUrl &&
@@ -11,7 +11,13 @@ export const isSupabaseConfigured = Boolean(
 );
 
 export const supabase = isSupabaseConfigured
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      typeof window === "undefined" && typeof WebSocket === "undefined"
+        ? { realtime: { createSocket: () => null } }
+        : undefined
+    )
   : null;
 
 // ==========================================
@@ -198,6 +204,8 @@ export async function syncTableToSupabase(tableName, rows, onConflict) {
   if (!supabase) return { ok: false, error: "Supabase not configured" };
   if (!rows || rows.length === 0) return { ok: true };
 
+
+
   try {
     const conflictCol = onConflict || (tableName === "schedules" ? "date" : "id");
 
@@ -263,6 +271,36 @@ export async function deleteFromSupabase(tableName, id) {
     return { ok: true };
   } catch (err) {
     console.error(`Error deleting from ${tableName}:`, err);
+    return { ok: false, error: err.message };
+  }
+}
+
+export async function bulkDeleteFromSupabase(tableName, ids) {
+  if (!supabase) return { ok: false };
+  if (!ids || ids.length === 0) return { ok: true };
+  try {
+    const idCol = tableName === "schedules" ? "date" : "id";
+    for (let i = 0; i < ids.length; i += 100) {
+      const chunk = ids.slice(i, i + 100);
+      const { error } = await supabase.from(tableName).delete().in(idCol, chunk);
+      if (error) throw error;
+    }
+    return { ok: true };
+  } catch (err) {
+    console.error(`Error bulk deleting from ${tableName}:`, err);
+    return { ok: false, error: err.message };
+  }
+}
+
+export async function deleteAllFromSupabase(tableName) {
+  if (!supabase) return { ok: false };
+  try {
+    const idCol = tableName === "schedules" ? "date" : "id";
+    const { error } = await supabase.from(tableName).delete().neq(idCol, "___non_existent_key___");
+    if (error) throw error;
+    return { ok: true };
+  } catch (err) {
+    console.error(`Error deleting all from ${tableName}:`, err);
     return { ok: false, error: err.message };
   }
 }

@@ -11,7 +11,7 @@ import { t } from "../lib/i18n";
 import { btnPrimary, card } from "../lib/styles";
 
 export function DataPage() {
-  const { db, setDb, pushToast, role, confirmAction, lang = "vi" } = useApp();
+  const { db, setDb, deleteData, pushToast, role, confirmAction, lang = "vi" } = useApp();
   const scheduleDates = useMemo(() => Object.keys(db.schedules).filter((k) => db.schedules[k]).sort(), [db.schedules]);
   const [range, setRange] = useState(() => ({ from: scheduleDates[0] || TODAY_KEY, to: scheduleDates[scheduleDates.length - 1] || TODAY_KEY }));
 
@@ -59,7 +59,7 @@ export function DataPage() {
         </div>
 
         {/* Card bên phải: Xóa dữ liệu */}
-        <DeleteDataCard db={db} setDb={setDb} role={role} pushToast={pushToast} confirmAction={confirmAction} scheduleDates={scheduleDates} />
+        <DeleteDataCard db={db} setDb={setDb} deleteData={deleteData} role={role} pushToast={pushToast} confirmAction={confirmAction} scheduleDates={scheduleDates} />
       </div>
     </div>
   );
