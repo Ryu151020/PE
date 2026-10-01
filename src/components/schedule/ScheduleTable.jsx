@@ -162,7 +162,7 @@ export function ScheduleTable({ machines, molds, orders, ordersById, entries, ed
 
   const handleDeleteSelection = useCallback(() => {
     if (!editable || !selection) return;
-    const cols = selection.colKeys.filter((k) => k !== "machineStatus" && k !== "filmRoll");
+    const cols = selection.colKeys.filter((k) => k !== "filmRoll");
     if (cols.length === 0) return;
     const newEntries = { ...entries };
     selection.machineIds.forEach((machineId) => {
@@ -201,10 +201,9 @@ export function ScheduleTable({ machines, molds, orders, ordersById, entries, ed
           </tbody>
         </table>
       </div>
-      {editable && (
-        <div className="flex items-center justify-between border-t border-line bg-canvas px-3 py-1.5 text-xs text-mute">
-          <span>Mẹo: click chọn ô; Shift+click hoặc kéo chuột để chọn nhiều ô (nhiều dòng & nhiều cột). Ctrl+C / Ctrl+V copy-dán cả vùng, Delete xóa, Esc bỏ chọn. / 提示：点击选中；Shift+点击或拖动可多选（多行多列）；Ctrl+C/V 复制粘贴整块区域，Delete 清空，Esc 取消选择</span>
-          {selection && <span className="font-bold text-brand">Đang chọn {selection.machineIds.length} × {selection.colKeys.length} = {selection.machineIds.length * selection.colKeys.length} ô</span>}
+      {editable && selection && (
+        <div className="flex items-center justify-end border-t border-line bg-canvas px-3 py-1.5 text-xs text-mute">
+          <span className="font-bold text-brand">Đang chọn {selection.machineIds.length} × {selection.colKeys.length} = {selection.machineIds.length * selection.colKeys.length} ô</span>
         </div>
       )}
     </div>

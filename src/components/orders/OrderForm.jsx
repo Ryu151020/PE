@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Modal } from "../ui/Overlays";
+import { SearchableSelect } from "../ui/SearchableSelect";
 import { btnPrimary, btnSecondary, inputCls } from "../../lib/styles";
 import { useApp } from "../../context/AppContext";
 import { t } from "../../lib/i18n";
@@ -7,11 +8,16 @@ import { t } from "../../lib/i18n";
 /* ============================================================
    ORDERS PAGE (simplified: Mã đơn hàng / Khuôn & Size / Cuộn màng)
    ============================================================ */
-export function OrderForm({ open, onClose, onSave, initial, molds, existingOrders = [], existingCodes }) {
+export function OrderForm({ open, onClose, onSave, initial, molds = [], existingOrders = [], existingCodes }) {
   const { lang = "vi" } = useApp() || {};
   const [form, setForm] = useState(() => initial || { orderCode: "", moldId: "", size: "", filmRollName: "", completed: false });
   const [error, setError] = useState("");
   const set = (p) => setForm((f) => ({ ...f, ...p }));
+
+  const moldOptions = useMemo(
+    () => (molds || []).map((m) => ({ value: m.id, label: m.moldName })),
+    [molds]
+  );
 
   const submit = () => {
     const code = form.orderCode.trim();
@@ -67,12 +73,15 @@ export function OrderForm({ open, onClose, onSave, initial, molds, existingOrder
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="mb-1 block text-xs text-mute">{t("mold", lang)}</label>
-            <select className={inputCls} value={form.moldId || ""} onChange={(e) => set({ moldId: e.target.value || null })}>
-              <option value="">{t("unassigned", lang)}</option>
-              {molds.map((m) => (
-                <option key={m.id} value={m.id}>{m.moldName}</option>
-              ))}
-            </select>
+            <SearchableSelect
+              value={form.moldId || null}
+              onChange={(val) => set({ moldId: val })}
+              options={moldOptions}
+              isMold={true}
+              searchPlaceholder="Tìm khuôn máy... / 搜索模具..."
+              placeholder=""
+              preferPlacement="bottom"
+            />
           </div>
           <div>
             <label className="mb-1 block text-xs text-mute">Size</label>

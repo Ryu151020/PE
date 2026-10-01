@@ -1,10 +1,8 @@
 import { useState } from "react";
-import { Wand2 } from "lucide-react";
 import { Modal } from "../ui/Overlays";
 import { useApp } from "../../context/AppContext";
 import { EMP_STATUS, EMP_STATUS_DEFS, POSITION_LIST, RESIGN_REASONS } from "../../lib/constants";
 import { getPositionLabel, getResignReasonLabel, getStatusLabel, t } from "../../lib/i18n";
-import { suggestChineseName } from "../../lib/seed";
 import { btnPrimary, btnSecondary, inputCls } from "../../lib/styles";
 
 export function EmployeeForm({ open, onClose, onSave, initial, existingCodes }) {
@@ -66,20 +64,7 @@ export function EmployeeForm({ open, onClose, onSave, initial, existingCodes }) 
         </div>
         <div>
           <label className="mb-1 block text-xs text-mute font-medium">{t("cnName", lang)}</label>
-          <div className="flex gap-2">
-            <input className={inputCls} value={form.chineseName} onChange={(e) => set({ chineseName: e.target.value })} placeholder="Chưa cập nhật" />
-            <button type="button" className={`${btnSecondary} shrink-0`} onClick={() => setSuggestion(suggestChineseName(form.vietnameseName))}>
-              <Wand2 size={14} /> {lang === "zh" ? "推荐" : lang === "en" ? "Suggest" : "Gợi ý"}
-            </button>
-          </div>
-          {suggestion && (
-            <div className="mt-1.5 flex items-center justify-between rad-14 bg-brand-tint px-2.5 py-1.5 text-xs text-brand">
-              <span>{lang === "zh" ? "建议" : lang === "en" ? "Suggestion" : "Gợi ý"}: {suggestion}</span>
-              <button className="font-semibold underline" onClick={() => { set({ chineseName: suggestion }); setSuggestion(""); }}>
-                {lang === "zh" ? "确认" : lang === "en" ? "Accept" : "Xác nhận"}
-              </button>
-            </div>
-          )}
+          <input className={inputCls} value={form.chineseName} onChange={(e) => set({ chineseName: e.target.value })} placeholder="" />
         </div>
         <div className="grid grid-cols-3 gap-3">
           <div>

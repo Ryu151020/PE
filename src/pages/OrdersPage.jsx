@@ -11,7 +11,7 @@ import { Segmented } from "../components/ui/Segmented";
 import { SortableTh } from "../components/ui/SortableTh";
 import { useApp } from "../context/AppContext";
 import { downloadOrderTemplate, parseAndDedupOrders } from "../lib/excel";
-import { isSupabaseConfigured, orderToDb, syncTableToSupabase } from "../lib/supabase";
+import { isSupabaseConfigured, orderToDb, syncTableToSupabase, deleteFromSupabase } from "../lib/supabase";
 import { storage } from "../sync/storage";
 import { btnIcon, btnSecondary, card, inputCls } from "../lib/styles";
 import { useTableHistory } from "../lib/useTableHistory";
@@ -20,13 +20,17 @@ import { getOrderStatusLabel, t } from "../lib/i18n";
 export function OrdersPage() {
   const { db, setDb, pushToast, confirmAction, lang = "vi", searchQuery = "" } = useApp();
   const query = searchQuery;
-  const [tab, setTab] = useState("open");
+  const [tab, setTab] = useState(() => storage.get("pe_orders_tab") || "open");
   const [addOpen, setAddOpen] = useState(false);
   const [excelOpen, setExcelOpen] = useState(false);
   const [selected, setSelected] = useState(null);
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
-  const [filters, setFilters] = useState({});
+  const [sortConfig, setSortConfig] = useState(() => storage.get("pe_orders_sort") || { key: null, direction: null });
+  const [filters, setFilters] = useState(() => storage.get("pe_orders_filters") || {});
   const clipRef = useRef(null);
+
+  useEffect(() => { storage.set("pe_orders_tab", tab); }, [tab]);
+  useEffect(() => { storage.set("pe_orders_sort", sortConfig); }, [sortConfig]);
+  useEffect(() => { storage.set("pe_orders_filters", filters); }, [filters]);
 
   const {
     data: orders,
@@ -157,10 +161,8 @@ export function OrdersPage() {
     confirmAction(
       `Cảnh báo: Bạn có chắc chắn muốn xóa vĩnh viễn đơn hàng "${o.orderCode}" không? / 警告：确定要删除订单 "${o.orderCode}" 吗？`,
       () => {
-        // Ghi nhận ID đã xóa để reload không bị phục hồi nhầm
-        const delIds = storage.get("pe_deleted_order_ids") || [];
-        if (!delIds.includes(o.id)) {
-          storage.set("pe_deleted_order_ids", [...delIds, o.id]);
+        if (isSupabaseConfigured) {
+          deleteFromSupabase("orders", o.id);
         }
         setOrdersWithHistory((prev) => prev.filter((x) => x.id !== o.id));
         pushToast("Đã xóa đơn hàng / 已删除", "info");

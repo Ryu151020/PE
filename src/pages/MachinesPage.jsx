@@ -10,6 +10,8 @@ import { PageHeader } from "../components/ui/PageHeader";
 import { useApp } from "../context/AppContext";
 import { MOLD_STATUS_COLOR, MOLD_STATUS_DEFS } from "../lib/constants";
 import { downloadMoldTemplate, parseAndDedupMolds } from "../lib/excel";
+import { isSupabaseConfigured, deleteFromSupabase } from "../lib/supabase";
+import { storage } from "../sync/storage";
 import { btnIcon, btnSecondary, card, inputCls } from "../lib/styles";
 import { useTableHistory } from "../lib/useTableHistory";
 import { SortableTh } from "../components/ui/SortableTh";
@@ -34,8 +36,11 @@ export function MachinesPage() {
     setDb((p) => ({ ...p, molds: nextMolds }));
   });
 
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
-  const [filters, setFilters] = useState({});
+  const [sortConfig, setSortConfig] = useState(() => storage.get("pe_machines_sort") || { key: null, direction: null });
+  const [filters, setFilters] = useState(() => storage.get("pe_machines_filters") || {});
+
+  useEffect(() => { storage.set("pe_machines_sort", sortConfig); }, [sortConfig]);
+  useEffect(() => { storage.set("pe_machines_filters", filters); }, [filters]);
 
   const handleSort = (key, forcedDirection) => {
     setSortConfig((prev) => {
@@ -108,6 +113,9 @@ export function MachinesPage() {
       `Cảnh báo: Bạn có chắc chắn muốn xóa vĩnh viễn khuôn "${m.moldName}"? / 警告：确定要删除模具 "${m.moldName}" 吗？`,
       () => {
         setMoldsWithHistory((prev) => prev.filter((x) => x.id !== m.id));
+        if (isSupabaseConfigured() && m.id) {
+          deleteFromSupabase("molds", m.id);
+        }
         pushToast("Đã xóa khuôn / 已删除", "info");
       },
       {

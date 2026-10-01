@@ -15,6 +15,7 @@ export function SearchableSelect({
   className = "",
   disabled = false,
   cellMode = false,
+  preferPlacement = "auto",
 }) {
   const { lang = "vi" } = useApp() || {};
   const [open, setOpen] = useState(false);
@@ -23,7 +24,7 @@ export function SearchableSelect({
   const dropdownRef = useRef(null);
   const searchInputRef = useRef(null);
 
-  const [coords, setCoords] = useState({ top: 0, left: 0, width: 220 });
+  const [coords, setCoords] = useState({ isFlipUp: false, top: 0, bottom: 0, left: 0, width: 220 });
 
   const effectiveSearchPlaceholder =
     searchPlaceholder || (isMold ? t("searchMoldPlaceholder", lang) : t("searchOrderPlaceholder", lang));
@@ -32,6 +33,9 @@ export function SearchableSelect({
     () => options.find((o) => String(o.value) === String(value)),
     [options, value]
   );
+
+  const displayLabel = selectedOption ? selectedOption.label : (value ? String(value) : "");
+  const selectedMoldStyle = isMold && displayLabel ? getMoldColor(displayLabel) : null;
 
   const filteredOptions = useMemo(() => {
     if (!search.trim()) return options;
@@ -49,7 +53,11 @@ export function SearchableSelect({
     const dropdownWidth = Math.max(rect.width, 220);
     const dropdownHeight = 240;
     const spaceBelow = window.innerHeight - rect.bottom;
-    const flipUp = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
+    const spaceAbove = rect.top;
+    const flipUp =
+      preferPlacement === "bottom"
+        ? spaceBelow < 120 && spaceAbove > spaceBelow
+        : spaceBelow < dropdownHeight && spaceAbove > dropdownHeight;
 
     let left = rect.left;
     if (left + dropdownWidth > window.innerWidth - 10) {
@@ -58,7 +66,9 @@ export function SearchableSelect({
     if (left < 10) left = 10;
 
     setCoords({
-      top: flipUp ? Math.max(10, rect.top - dropdownHeight - 4) : rect.bottom + 4,
+      isFlipUp: flipUp,
+      top: rect.bottom + 4,
+      bottom: window.innerHeight - rect.top + 4,
       left,
       width: dropdownWidth,
     });
@@ -127,8 +137,6 @@ export function SearchableSelect({
     setSearch("");
   };
 
-  const selectedMoldStyle = isMold && selectedOption ? getMoldColor(selectedOption.label) : null;
-
   return (
     <div className={`relative inline-block w-full text-sm ${className}`}>
       {cellMode ? (
@@ -148,10 +156,22 @@ export function SearchableSelect({
         >
           {isMold ? (
             selectedMoldStyle ? (
-              <span
-                className={`px-2 py-0.5 rounded-xs border text-[13px] font-semibold ${selectedMoldStyle.bg} ${selectedMoldStyle.text} ${selectedMoldStyle.border}`}
-              >
-                {selectedOption.label}
+              <span className="group/val inline-flex items-center gap-1">
+                <span
+                  style={selectedMoldStyle.style}
+                  className={`px-2 py-0.5 rounded-xs border text-[13px] font-semibold ${selectedMoldStyle.bg || ""} ${selectedMoldStyle.text || ""} ${selectedMoldStyle.border || ""}`}
+                >
+                  {displayLabel}
+                </span>
+                {!disabled && (
+                  <span
+                    onClick={handleClear}
+                    className="opacity-0 group-hover/val:opacity-100 hover:text-bad text-mute transition-opacity p-0.5 cursor-pointer rounded-xs"
+                    title="Xóa khuôn"
+                  >
+                    <X size={12} />
+                  </span>
+                )}
               </span>
             ) : !disabled ? (
               <span className="flex h-[22px] w-[22px] items-center justify-center rounded-xs border border-dashed border-line2 text-mute group-hover:border-brand group-hover:text-brand opacity-0 group-hover:opacity-100 transition-opacity mx-auto">
@@ -161,9 +181,20 @@ export function SearchableSelect({
               <span className="inline-block min-h-[22px] w-full" />
             )
           ) : (
-            selectedOption ? (
-              <span className="truncate text-[13px] font-bold text-black">
-                {selectedOption.label}
+            displayLabel ? (
+              <span className="group/val flex items-center justify-between w-full gap-1">
+                <span className="truncate text-[13px] font-bold text-black">
+                  {displayLabel}
+                </span>
+                {!disabled && (
+                  <span
+                    onClick={handleClear}
+                    className="opacity-0 group-hover/val:opacity-100 hover:text-bad text-mute transition-opacity p-0.5 shrink-0 cursor-pointer rounded-xs"
+                    title="Xóa đơn hàng"
+                  >
+                    <X size={12} />
+                  </span>
+                )}
               </span>
             ) : !disabled ? (
               <span className="flex h-[22px] w-[22px] items-center justify-center rounded-xs border border-dashed border-line2 text-mute group-hover:border-brand group-hover:text-brand opacity-0 group-hover:opacity-100 transition-opacity">
@@ -185,7 +216,7 @@ export function SearchableSelect({
           }`}
         >
           <span className="truncate">
-            {selectedOption ? selectedOption.label : placeholder}
+            {displayLabel || placeholder}
           </span>
           <div className="flex shrink-0 items-center gap-1">
             {value && !disabled && (
@@ -207,7 +238,7 @@ export function SearchableSelect({
             ref={dropdownRef}
             style={{
               position: "fixed",
-              top: coords.top,
+              ...(coords.isFlipUp ? { bottom: coords.bottom } : { top: coords.top }),
               left: coords.left,
               width: coords.width,
               zIndex: 99999,
@@ -240,7 +271,7 @@ export function SearchableSelect({
                 onClick={() => handleSelect(null)}
                 className="cursor-pointer px-2.5 py-1.5 text-sm text-mute hover:bg-canvas rounded-xs"
               >
-                — {t("clearSelection", lang)} —
+                — {lang === "zh" ? "留空" : lang === "en" ? "Empty" : "Để trống"} —
               </div>
               {filteredOptions.length === 0 ? (
                 <div className="px-2.5 py-3 text-center text-sm text-mute">
@@ -264,10 +295,11 @@ export function SearchableSelect({
                     >
                       {moldColor ? (
                         <span
+                          style={isSelected ? undefined : moldColor.style}
                           className={`text-xs px-2 py-0.5 rounded-xs border font-medium ${
                             isSelected
                               ? "bg-white/20 text-white border-white/40"
-                              : `${moldColor.bg} ${moldColor.text} ${moldColor.border}`
+                              : `${moldColor.bg || ""} ${moldColor.text || ""} ${moldColor.border || ""}`
                           }`}
                         >
                           {opt.label}

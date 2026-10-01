@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { EmployeeMultiSelect } from "./EmployeeChip";
 import { ShiftOvertimeBadge } from "./ShiftOvertimeBadge";
 import { StackedStatusBadge } from "../ui/Badges";
@@ -10,61 +11,132 @@ import { entryMachineStatus } from "../../lib/schedule";
 
 function MachineStatusCell({ machineStatus, onChange, lang, disabled }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef(null);
+  const triggerRef = useRef(null);
+  const dropdownRef = useRef(null);
+  const [coords, setCoords] = useState({ isFlipUp: false, top: 0, bottom: 0, left: 0, width: 140 });
   const st = MACHINE_STATUS_DEFS[machineStatus];
+
+  const updatePosition = () => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const dropdownWidth = 140;
+    const dropdownHeight = 150;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const flipUp = spaceBelow < dropdownHeight && spaceAbove > dropdownHeight;
+
+    let left = rect.left + rect.width / 2 - dropdownWidth / 2;
+    if (left + dropdownWidth > window.innerWidth - 10) left = window.innerWidth - dropdownWidth - 10;
+    if (left < 10) left = 10;
+
+    setCoords({
+      isFlipUp: flipUp,
+      top: rect.bottom + 4,
+      bottom: window.innerHeight - rect.top + 4,
+      left,
+      width: dropdownWidth,
+    });
+  };
+
+  const handleOpen = (e) => {
+    e.stopPropagation();
+    if (disabled) return;
+    updatePosition();
+    setOpen((prev) => !prev);
+  };
 
   useEffect(() => {
     if (!open) return;
-    const handleClick = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) {
+    updatePosition();
+
+    const handleClickOutside = (e) => {
+      if (
+        triggerRef.current &&
+        !triggerRef.current.contains(e.target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target)
+      ) {
         setOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
+
+    const handleScroll = (e) => {
+      if (dropdownRef.current && dropdownRef.current.contains(e.target)) return;
+      updatePosition();
+    };
+
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("scroll", handleScroll, true);
+    window.addEventListener("resize", updatePosition);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", handleScroll, true);
+      window.removeEventListener("resize", updatePosition);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [open]);
 
   return (
-    <div ref={ref} className="relative inline-flex items-center justify-center">
+    <div className="relative inline-flex items-center justify-center w-full">
       <button
+        ref={triggerRef}
         type="button"
         disabled={disabled}
-        onClick={() => setOpen((v) => !v)}
-        className="cursor-pointer transition-transform hover:scale-105 active:scale-95 focus:outline-none disabled:cursor-not-allowed disabled:transform-none"
+        onClick={handleOpen}
+        className="cursor-pointer transition-transform hover:scale-105 active:scale-95 focus:outline-none disabled:cursor-not-allowed disabled:transform-none select-none"
         title={disabled ? "" : "Bấm để đổi trạng thái máy"}
       >
         <StackedStatusBadge vi={st?.vi} zh={st?.zh} className={MACHINE_STATUS_COLOR[machineStatus]} />
       </button>
 
-      {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 min-w-[130px] rounded-lg border border-line bg-white p-1 shadow-xl animate-in fade-in zoom-in-95 duration-100">
-          {Object.entries(MACHINE_STATUS_DEFS).map(([k]) => {
-            const isSel = k === machineStatus;
-            return (
-              <button
-                key={k}
-                type="button"
-                onClick={() => {
-                  onChange(k);
-                  setOpen(false);
-                }}
-                className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-bold rounded-md cursor-pointer transition-colors ${
-                  isSel ? "bg-[#F4F7FE]" : "hover:bg-canvas"
-                }`}
-              >
-                <span
-                  className={`inline-block h-2 w-2 rounded-full ${
-                    k === "OPEN" ? "bg-ok" : k === "STOPPED" ? "bg-bad" : "bg-warn"
+      {open &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            style={{
+              position: "fixed",
+              ...(coords.isFlipUp ? { bottom: coords.bottom } : { top: coords.top }),
+              left: coords.left,
+              width: coords.width,
+              zIndex: 99999,
+            }}
+            className="rounded-lg border border-line bg-white p-1 shadow-2xl animate-in fade-in zoom-in-95 duration-100 text-sm"
+          >
+            {Object.entries(MACHINE_STATUS_DEFS).map(([k]) => {
+              const isSel = k === machineStatus;
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChange(k);
+                    setOpen(false);
+                  }}
+                  className={`flex w-full items-center gap-2 px-2.5 py-1.5 text-xs font-bold rounded-md cursor-pointer transition-colors ${
+                    isSel ? "bg-[#F4F7FE]" : "hover:bg-canvas"
                   }`}
-                />
-                <span style={{ color: MACHINE_STATUS_TEXT_COLOR[k] }}>
-                  {getMachineStatusLabel(k, lang)}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+                >
+                  <span
+                    className={`inline-block h-2 w-2 rounded-full shrink-0 ${
+                      k === "OPEN" ? "bg-ok" : k === "STOPPED" ? "bg-bad" : "bg-warn"
+                    }`}
+                  />
+                  <span style={{ color: MACHINE_STATUS_TEXT_COLOR[k] }}>
+                    {getMachineStatusLabel(k, lang)}
+                  </span>
+                </button>
+              );
+            })}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
@@ -108,16 +180,23 @@ export function ScheduleRow({ machine, entry, molds, orders, ordersById, editabl
   );
 
   const orderOptions = useMemo(
-    () =>
-      orders
-        .filter((o) => !o.completed || o.id === entry.orderId)
-        .map((o) => ({
-          value: o.id,
-          label: orderLabel(o),
-          disabled: o.completed,
-          sub: o.completed ? "đã xong" : "",
-        })),
-    [orders, entry.orderId]
+    () => {
+      const list = [...orders];
+      if (entry.orderId && !list.some((o) => o.id === entry.orderId || o.orderCode === entry.orderId)) {
+        if (currentOrder) {
+          list.push(currentOrder);
+        } else {
+          list.push({ id: entry.orderId, orderCode: entry.orderId });
+        }
+      }
+      return list.map((o) => ({
+        value: o.id,
+        label: orderLabel(o),
+        disabled: false,
+        sub: o.completed ? (lang === "zh" ? "已完成" : "Đã xong") : "",
+      }));
+    },
+    [orders, entry.orderId, currentOrder, lang]
   );
 
   const effectiveFilmRoll = currentOrder ? (currentOrder.filmRollName || "") : (entry.filmRollName || "");

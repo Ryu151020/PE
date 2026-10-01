@@ -3,7 +3,16 @@ import { EMP_STATUS, MACHINE_STATUS, PLAN_STATUS, POSITIONS, isActive } from "./
 /* ============================================================
    DOMAIN HELPERS
    ============================================================ */
-export function byId(list) { const m = {}; list.forEach((x) => (m[x.id] = x)); return m; }
+export function byId(list) {
+  const m = {};
+  (list || []).forEach((x) => {
+    if (x && x.id) m[x.id] = x;
+    if (x && x.employeeCode) m[x.employeeCode] = x;
+    if (x && x.orderCode) m[x.orderCode] = x;
+    if (x && x.moldName) m[x.moldName] = x;
+  });
+  return m;
+}
 
 export function isSchedulableOn(emp, dateKey) {
   if (!emp) return false;
@@ -173,6 +182,7 @@ export function getCellValue(entry, colKey) {
 export function applyCellValue(entry, colKey, value, dateKey, employeesById, claimed, ordersById) {
   const filterIds = (ids) => { const kept = [], skipped = []; (ids || []).forEach((id) => { const e = employeesById[id]; if (!e || !isSchedulableOn(e, dateKey)) { skipped.push({ id, reason: "đã nghỉ việc" }); return; } kept.push(id); }); return { kept, skipped }; };
   switch (colKey) {
+    case "machineStatus": return { entry: { ...entry, machineStatus: value || null }, skipped: [] };
     case "mold": return { entry: { ...entry, moldId: value || null }, skipped: [] };
     case "order": {
       const ord = value && ordersById ? ordersById[value] : null;

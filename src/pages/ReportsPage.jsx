@@ -222,7 +222,7 @@ export function ReportsPage() {
             title={t("dayNightReport", lang)}
             subtitle={t("dayNightSubtitle", lang)}
           >
-            <div className="overflow-x-auto max-h-[380px] overflow-y-auto">
+            <div className="overflow-x-auto">
               <table className="w-full text-sm border-separate border-spacing-0" style={{ tableLayout: "fixed" }}>
                 <colgroup><col style={{ width: "12%" }} /><col style={{ width: "23%" }} /><col style={{ width: "17%" }} /><col style={{ width: "16%" }} /><col style={{ width: "10%" }} /><col style={{ width: "10%" }} /><col style={{ width: "12%" }} /></colgroup>
                 <thead className="pe-thead sticky top-0 z-10 bg-[#F8FAFC] shadow-xs">
@@ -268,7 +268,7 @@ export function ReportsPage() {
             title={t("overtimeReport", lang)}
             subtitle={`${t("totalOvertimeHours", lang)}: ${Math.round(otByEmployee.reduce((s, r) => s + r.totalOT, 0) * 10) / 10} ${t("hours", lang)}`}
           >
-            <div className="overflow-x-auto max-h-[380px] overflow-y-auto">
+            <div className="overflow-x-auto">
               <table className="w-full text-sm border-separate border-spacing-0" style={{ tableLayout: "fixed" }}>
                 <colgroup><col style={{ width: "12%" }} /><col style={{ width: "23%" }} /><col style={{ width: "17%" }} /><col style={{ width: "16%" }} /><col style={{ width: "10%" }} /><col style={{ width: "10%" }} /><col style={{ width: "12%" }} /></colgroup>
                 <thead className="pe-thead sticky top-0 z-10 bg-[#F8FAFC] shadow-xs">
@@ -350,7 +350,7 @@ export function ReportsPage() {
           title={t("machineReport", lang)}
           subtitle={t("machineReportSubtitle", lang)}
         >
-          <div className="overflow-x-auto max-h-[380px] overflow-y-auto">
+          <div className="overflow-x-auto">
             <table className="w-full text-sm border-separate border-spacing-0" style={{ tableLayout: "fixed" }}>
               <colgroup><col style={{ width: "16%" }} /><col style={{ width: "14%" }} /><col style={{ width: "14%" }} /><col style={{ width: "14%" }} /><col style={{ width: "14%" }} /><col style={{ width: "14%" }} /><col style={{ width: "14%" }} /></colgroup>
               <thead className="pe-thead sticky top-0 z-10 bg-[#F8FAFC] shadow-xs">

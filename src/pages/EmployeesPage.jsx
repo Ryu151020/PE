@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Award, Briefcase, ClipboardPaste, Eye, Trash2, UserCheck, Users } from "lucide-react";
+import { Award, Briefcase, ClipboardPaste, Eye, RotateCcw, Trash2, UserCheck, Users } from "lucide-react";
 import { DateRangeFilter } from "../components/employees/DateRangeFilter";
 import { EmployeeDetailDrawer } from "../components/employees/EmployeeDetailDrawer";
 import { EmployeeForm } from "../components/employees/EmployeeForm";
@@ -17,6 +17,8 @@ import { useApp } from "../context/AppContext";
 import { EMP_STATUS, EMP_STATUS_COLOR, EMP_STATUS_DEFS, POSITION_LIST, POSITION_ZH, isActive } from "../lib/constants";
 import { TODAY_KEY, formatSeniority, inRange } from "../lib/dates";
 import { downloadEmployeeTemplate, parseAndDedupEmployees } from "../lib/excel";
+import { isSupabaseConfigured, deleteFromSupabase } from "../lib/supabase";
+import { storage } from "../sync/storage";
 import { byId } from "../lib/schedule";
 import { btnIcon, btnSecondary, card, inputCls } from "../lib/styles";
 import { useTableHistory } from "../lib/useTableHistory";
@@ -30,16 +32,21 @@ export function EmployeesPage() {
   const machinesById = useMemo(() => byId(db.machines), [db.machines]);
   const ordersById = useMemo(() => byId(db.orders), [db.orders]);
   const moldsById = useMemo(() => byId(db.molds), [db.molds]);
-  const [tab, setTab] = useState("active");
-  const [positionFilter, setPositionFilter] = useState("");
+  const [tab, setTab] = useState(() => storage.get("pe_employees_tab") || "active");
+  const [positionFilter, setPositionFilter] = useState(() => storage.get("pe_employees_position_filter") || "");
   const [joinRange, setJoinRange] = useState(null);
   const [resignRange, setResignRange] = useState(null);
   const [form, setForm] = useState(null);
   const [detailEmployee, setDetailEmployee] = useState(null);
   const [pasteOpen, setPasteOpen] = useState(false);
   const [excelOpen, setExcelOpen] = useState(false);
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: null });
-  const [filters, setFilters] = useState({});
+  const [sortConfig, setSortConfig] = useState(() => storage.get("pe_employees_sort") || { key: null, direction: null });
+  const [filters, setFilters] = useState(() => storage.get("pe_employees_filters") || {});
+
+  useEffect(() => { storage.set("pe_employees_tab", tab); }, [tab]);
+  useEffect(() => { storage.set("pe_employees_position_filter", positionFilter); }, [positionFilter]);
+  useEffect(() => { storage.set("pe_employees_sort", sortConfig); }, [sortConfig]);
+  useEffect(() => { storage.set("pe_employees_filters", filters); }, [filters]);
 
   const {
     data: employees,
@@ -106,6 +113,9 @@ export function EmployeesPage() {
       `Cảnh báo: Bạn có chắc chắn muốn xóa vĩnh viễn nhân sự "${e.vietnameseName} (${e.employeeCode})"? / 警告：确定要删除员工 "${e.vietnameseName} (${e.employeeCode})" 吗？`,
       () => {
         setEmployeesWithHistory((prev) => prev.filter((x) => x.id !== e.id));
+        if (isSupabaseConfigured() && e.id) {
+          deleteFromSupabase("employees", e.id);
+        }
         pushToast(`Đã xóa nhân sự ${e.vietnameseName} / 已删除`, "info");
       },
       {
@@ -580,7 +590,7 @@ export function EmployeesPage() {
                           onClick={() => restoreEmployee(e)}
                           title="Khôi phục / 恢复"
                         >
-                          <Undo2 size={13} />
+                          <RotateCcw size={13} />
                         </button>
                       )}
                       <button

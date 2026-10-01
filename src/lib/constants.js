@@ -19,6 +19,7 @@ export const EMP_STATUS_DEFS = [
   { key: "OFFICIAL", vi: "Chính thức", zh: "正式工" },
   { key: "PROBATION", vi: "Thử việc", zh: "试用期" },
   { key: "SEASONAL", vi: "Thời vụ", zh: "临时工" },
+  { key: "SUPPORT", vi: "Hỗ trợ", zh: "支援" },
   { key: "RESIGNED", vi: "Đã nghỉ việc", zh: "已离职" },
 ];
 
@@ -30,6 +31,7 @@ export const EMP_STATUS_COLOR = {
   [EMP_STATUS.OFFICIAL]: "bg-ok-tint text-ok",
   [EMP_STATUS.PROBATION]: "bg-brand-tint text-brand",
   [EMP_STATUS.SEASONAL]: "bg-day-soft text-warn",
+  [EMP_STATUS.SUPPORT]: "bg-[#E6F8FE] text-[#0088A9]",
   [EMP_STATUS.RESIGNED]: "bg-canvas text-mute",
 };
 
@@ -38,9 +40,10 @@ export const EMP_STATUS_TAG = {
   [EMP_STATUS.OFFICIAL]: { char: "正", color: "bg-ok" },
   [EMP_STATUS.PROBATION]: { char: "试", color: "bg-brand" },
   [EMP_STATUS.SEASONAL]: { char: "临", color: "bg-warn-deep" },
+  [EMP_STATUS.SUPPORT]: { char: "支", color: "bg-[#0284C7]" },
 };
 
-export const isActive = (e) => e.status !== EMP_STATUS.RESIGNED;
+export const isActive = (e) => e && e.status !== EMP_STATUS.RESIGNED;
 
 export const RESIGN_REASONS = [
   { vi: "Về quê", zh: "回老家" },
@@ -132,12 +135,28 @@ export const MOLD_COLOR_PALETTE = [
 ];
 
 export function getMoldColor(moldName) {
-  if (!moldName) return { bg: "bg-canvas", text: "text-mute", border: "border-line" };
-  let hash = 0;
-  for (let i = 0; i < moldName.length; i++) {
-    hash = (hash << 5) - hash + moldName.charCodeAt(i);
-    hash |= 0;
+  if (!moldName) return { bg: "bg-canvas", text: "text-mute", border: "border-line", style: {} };
+  const numMatch = String(moldName).match(/\d+/);
+  let seed = 0;
+  if (numMatch) {
+    seed = parseInt(numMatch[0], 10);
+  } else {
+    for (let i = 0; i < moldName.length; i++) {
+      seed = (seed << 5) - seed + moldName.charCodeAt(i);
+      seed |= 0;
+    }
+    seed = Math.abs(seed);
   }
-  const idx = Math.abs(hash) % MOLD_COLOR_PALETTE.length;
-  return MOLD_COLOR_PALETTE[idx];
+  // Golden angle approximation (137.508 degrees) gives optimal visual separation
+  const hue = Math.round((seed * 137.508) % 360);
+  return {
+    bg: "",
+    text: "",
+    border: "",
+    style: {
+      backgroundColor: `hsl(${hue}, 88%, 94%)`,
+      color: `hsl(${hue}, 92%, 24%)`,
+      borderColor: `hsl(${hue}, 65%, 75%)`,
+    },
+  };
 }

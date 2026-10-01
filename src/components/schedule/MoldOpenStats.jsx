@@ -53,9 +53,8 @@ export function MoldOpenStats({ day, machines, moldsById }) {
     { key: "total", label: t("totalSummary", lang), value: stats.total },
   ];
 
-  const unassignedLabel = t("unassignedMold", lang);
   const byMold = stats.rows.map((r) => ({
-    name: r.moldName || `— ${unassignedLabel}`,
+    name: r.moldName || "—",
     day: r.day,
     night: r.night,
     total: r.total,
@@ -87,12 +86,12 @@ export function MoldOpenStats({ day, machines, moldsById }) {
         <div className="mt-6 space-y-6">
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <div>
-              <div className="mb-2 text-sm font-bold text-ink">{t("shiftComparison", lang)}</div>
-              <div style={{ width: "100%", height: 260 }}>
+              <div className="mb-2 min-h-[28px] flex items-center text-sm font-bold text-ink">{t("shiftComparison", lang)}</div>
+              <div style={{ width: "100%", height: 280 }}>
                 <ResponsiveContainer>
                   <BarChart data={totals} margin={{ top: 22, right: 8, bottom: 0, left: 0 }}>
                     <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#E9EDF7" />
-                    <XAxis dataKey="label" tick={AXIS_TICK} axisLine={false} tickLine={false} />
+                    <XAxis dataKey="label" tick={AXIS_TICK} height={55} axisLine={false} tickLine={false} />
                     <YAxis tick={AXIS_TICK} allowDecimals={false} axisLine={false} tickLine={false} width={32} />
                     <Tooltip content={<VenusTooltip />} cursor={{ fill: "rgba(67,24,255,0.06)", radius: 8 }} />
                     <Bar dataKey="value" name={t("moldsCount", lang)} radius={[10, 10, 0, 0]} maxBarSize={56} animationDuration={500} animationEasing="ease-out">
@@ -105,7 +104,7 @@ export function MoldOpenStats({ day, machines, moldsById }) {
             </div>
 
             <div className="lg:col-span-2">
-              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <div className="mb-2 min-h-[28px] flex flex-wrap items-center justify-between gap-2">
                 <div className="text-sm font-bold text-ink">{t("byMold", lang)}</div>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs font-medium text-mute">
                   <span className="inline-flex items-center gap-1.5">
@@ -120,9 +119,9 @@ export function MoldOpenStats({ day, machines, moldsById }) {
               </div>
               <div style={{ width: "100%", height: 280 }}>
                 <ResponsiveContainer>
-                  <BarChart data={byMold} margin={{ top: 26, right: 8, bottom: 30, left: 0 }}>
+                  <BarChart data={byMold} margin={{ top: 22, right: 8, bottom: 0, left: 0 }}>
                     <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#E9EDF7" />
-                    <XAxis dataKey="name" tick={AXIS_TICK} interval={0} angle={-25} textAnchor="end" height={50} axisLine={false} tickLine={false} />
+                    <XAxis dataKey="name" tick={AXIS_TICK} interval={0} angle={-25} textAnchor="end" height={55} axisLine={false} tickLine={false} />
                     <YAxis tick={AXIS_TICK} allowDecimals={false} axisLine={false} tickLine={false} width={32} domain={[0, "dataMax + 1"]} />
                     <Tooltip content={<StackTip lang={lang} />} cursor={{ fill: "rgba(67,24,255,0.06)", radius: 8 }} />
                     <Bar dataKey="day" name={t("dayShift", lang)} stackId="molds" fill={COLORS.day} stroke="#fff" strokeWidth={2} radius={[6, 6, 6, 6]} maxBarSize={34} animationDuration={500}>
@@ -151,7 +150,7 @@ export function MoldOpenStats({ day, machines, moldsById }) {
               <tbody>
                 {stats.rows.map((r) => (
                   <tr key={r.key} className="border-t border-line hover:bg-canvas">
-                    <td className="px-3 py-2.5 font-bold text-ink">{r.moldName || `— ${unassignedLabel}`}</td>
+                    <td className="px-3 py-2.5 font-bold text-ink">{r.moldName || "—"}</td>
                     <td className="px-3 py-2.5 text-center font-medium text-body">{r.day}</td>
                     <td className="px-3 py-2.5 text-center font-medium text-body">{r.night}</td>
                     <td className="px-3 py-2.5 text-center font-bold text-ink">{r.total}</td>

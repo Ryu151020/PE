@@ -62,72 +62,29 @@ export function useLocalDb() {
           });
         }
 
-        // 2. Intelligently merge orders so newly added/cached orders are never wiped out
-        const deletedOrderIds = new Set(storage.get(DELETED_ORDERS_KEY) || []);
-        const remoteOrders = (remoteData.orders || []).filter((o) => !deletedOrderIds.has(o.id));
-        const remoteOrderIds = new Set(remoteOrders.map((o) => o.id));
-        const mergedOrders = [...remoteOrders];
-        const unsyncedOrders = [];
-
-        if (localCached?.orders && Array.isArray(localCached.orders)) {
-          localCached.orders.forEach((locOrd) => {
-            if (!locOrd || !locOrd.id || deletedOrderIds.has(locOrd.id)) return;
-            if (!remoteOrderIds.has(locOrd.id)) {
-              mergedOrders.push(locOrd);
-              unsyncedOrders.push(locOrd);
-            }
-          });
-        }
-
-        // 3. Intelligently merge employees
-        const deletedEmpIds = new Set(storage.get(DELETED_EMPLOYEES_KEY) || []);
-        const remoteEmployees = (remoteData.employees || []).filter((e) => !deletedEmpIds.has(e.id));
-        const remoteEmpIds = new Set(remoteEmployees.map((e) => e.id));
-        const mergedEmployees = [...remoteEmployees];
-        const unsyncedEmployees = [];
-
-        if (localCached?.employees && Array.isArray(localCached.employees)) {
-          localCached.employees.forEach((locEmp) => {
-            if (!locEmp || !locEmp.id || deletedEmpIds.has(locEmp.id)) return;
-            if (!remoteEmpIds.has(locEmp.id)) {
-              mergedEmployees.push(locEmp);
-              unsyncedEmployees.push(locEmp);
-            }
-          });
-        }
-
-        // 4. Intelligently merge molds
-        const deletedMoldIds = new Set(storage.get(DELETED_MOLDS_KEY) || []);
-        const remoteMolds = (remoteData.molds || []).filter((m) => !deletedMoldIds.has(m.id));
-        const remoteMoldIds = new Set(remoteMolds.map((m) => m.id));
-        const mergedMolds = [...remoteMolds];
-        const unsyncedMolds = [];
-
-        if (localCached?.molds && Array.isArray(localCached.molds)) {
-          localCached.molds.forEach((locMold) => {
-            if (!locMold || !locMold.id || deletedMoldIds.has(locMold.id)) return;
-            if (!remoteMoldIds.has(locMold.id)) {
-              mergedMolds.push(locMold);
-              unsyncedMolds.push(locMold);
-            }
-          });
-        }
-
+        // When remote fetch succeeds, Supabase is the source of truth for tables.
+        // We do NOT resurrect old deleted local rows back to remote!
         const mergedData = {
           ...remoteData,
-          orders: mergedOrders,
-          employees: mergedEmployees,
-          molds: mergedMolds,
+          orders: remoteData.orders || [],
+          employees: remoteData.employees || [],
+          molds: remoteData.molds || [],
+          machines: remoteData.machines || [],
           schedules: mergedSchedules,
         };
 
         setDbState(mergedData);
         prevDbRef.current = mergedData;
         storage.set(LOCAL_DB_KEY, mergedData);
+        // Clear any old tombstone keys since remote is now cleanly synced
+        storage.remove(DELETED_ORDERS_KEY);
+        storage.remove(DELETED_EMPLOYEES_KEY);
+        storage.remove(DELETED_MOLDS_KEY);
+
         setSyncStatus("connected");
         setLastSyncedAt(Date.now());
 
-        // Background sync: push any locally cached schedules that are missing or newer in Supabase
+        // Background sync: push any locally cached schedules that are newer in local
         if (localCached?.schedules) {
           for (const [k, s] of Object.entries(localCached.schedules)) {
             if (!s) continue;
@@ -138,34 +95,6 @@ export function useLocalDb() {
             }
           }
         }
-
-        // Background sync: push any locally cached orders missing in Supabase
-        if (unsyncedOrders.length > 0) {
-          const rows = unsyncedOrders.map(orderToDb);
-          syncTableToSupabase("orders", rows);
-        }
-
-        // Background sync: push any locally cached employees missing in Supabase
-        if (unsyncedEmployees.length > 0) {
-          const rows = unsyncedEmployees.map(employeeToDb);
-          syncTableToSupabase("employees", rows);
-        }
-
-        // Background sync: push any locally cached molds missing in Supabase
-        if (unsyncedMolds.length > 0) {
-          const rows = unsyncedMolds.map(moldToDb);
-          syncTableToSupabase("molds", rows);
-        }
-
-        // Background cleanup: finalize deletion for any marked deleted items on Supabase
-        for (const delId of deletedOrderIds) {
-          deleteFromSupabase("orders", delId).then((res) => {
-            if (res.ok) {
-              const cur = (storage.get(DELETED_ORDERS_KEY) || []).filter((id) => id !== delId);
-              storage.set(DELETED_ORDERS_KEY, cur);
-            }
-          });
-        }
       }
     } catch (err) {
       console.warn("Supabase initial fetch failed, using local cache:", err);
@@ -174,9 +103,20 @@ export function useLocalDb() {
   }, []);
 
   useEffect(() => {
-    if (isSupabaseConfigured) {
+    if (!isSupabaseConfigured) return;
+    reloadFromSupabase();
+
+    const handleFocus = () => {
       reloadFromSupabase();
-    }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    const interval = setInterval(reloadFromSupabase, 60000);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      clearInterval(interval);
+    };
   }, [reloadFromSupabase]);
 
   // Sync delta changes to Supabase

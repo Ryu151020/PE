@@ -101,8 +101,8 @@ export const DICT = {
   searchOrderPlaceholder: { vi: "Tìm đơn...", zh: "搜索订单...", en: "Search order..." },
   notFound: { vi: "Không tìm thấy", zh: "未找到", en: "Not found" },
   selectPlaceholder: { vi: "— chọn —", zh: "— 选择 —", en: "— select —" },
-  unassigned: { vi: "— Chưa gán —", zh: "— 未分配 —", en: "— Unassigned —" },
-  unassignedMold: { vi: "Chưa gán khuôn", zh: "未分配模具", en: "Unassigned Mold" },
+  unassigned: { vi: "", zh: "", en: "" },
+  unassignedMold: { vi: "—", zh: "—", en: "—" },
   clearSelection: { vi: "— Bỏ chọn —", zh: "— 清空 —", en: "— Clear —" },
   apply: { vi: "Áp dụng", zh: "应用", en: "Apply" },
   cancel: { vi: "Hủy", zh: "取消", en: "Cancel" },
@@ -194,6 +194,7 @@ export const STATUS_TRANSLATIONS = {
   "Chính thức": { vi: "Chính thức", zh: "正式工", en: "Official" },
   "Thử việc": { vi: "Thử việc", zh: "试用期", en: "Probation" },
   "Thời vụ": { vi: "Thời vụ", zh: "临时工", en: "Seasonal" },
+  "Hỗ trợ": { vi: "Hỗ trợ", zh: "支援", en: "Support" },
   "Đã nghỉ việc": { vi: "Đã nghỉ việc", zh: "已离职", en: "Resigned" },
   "Nghỉ việc": { vi: "Nghỉ việc", zh: "已离职", en: "Resigned" },
 };
