@@ -325,19 +325,19 @@ export function ShiftHeader({ dayData, employees, employeesById, editable, onCha
   return (
     <thead className="sticky top-0 z-20">
       <tr className="text-xs">
-        <th rowSpan={3} className="z-30 pe-th border-b border-r border-line px-2 py-3 font-bold text-center align-middle text-black" style={{ position: "sticky", left: L0, width: W0, minWidth: W0, maxWidth: W0 }}>
+        <th rowSpan={3} className="z-30 pe-th border-b border-r border-line px-2 py-3 font-bold text-center align-middle text-black !bg-white bg-white" style={{ position: "sticky", left: L0, width: W0, minWidth: W0, maxWidth: W0 }}>
           <Bi vi="Số máy" zh="机台号" en="Machine No." center viClass="font-bold text-black text-sm" zhClass="font-bold text-black text-sm" enClass="font-bold text-black text-sm" />
         </th>
-        <th rowSpan={3} className="z-30 pe-th border-b border-r border-line px-3 py-3 font-bold text-center align-middle text-black" style={{ position: "sticky", left: L1, width: W1, minWidth: W1, maxWidth: W1 }}>
+        <th rowSpan={3} className="z-30 pe-th border-b border-r border-line px-3 py-3 font-bold text-center align-middle text-black !bg-white bg-white" style={{ position: "sticky", left: L1, width: W1, minWidth: W1, maxWidth: W1 }}>
           <Bi vi="Trạng thái máy" zh="机器状态" en="Machine Status" center viClass="font-bold text-black text-sm" zhClass="font-bold text-black text-sm" enClass="font-bold text-black text-sm" />
         </th>
-        <th rowSpan={3} className="z-30 pe-th border-b border-r border-line px-3 py-3 font-bold text-center align-middle text-black" style={{ position: "sticky", left: L2, width: W2, minWidth: W2, maxWidth: W2, boxShadow: "8px 0 8px -8px rgba(112,144,176,0.28)" }}>
+        <th rowSpan={3} className="z-30 pe-th border-b border-r border-line px-3 py-3 font-bold text-center align-middle text-black !bg-white bg-white" style={{ position: "sticky", left: L2, width: W2, minWidth: W2, maxWidth: W2, boxShadow: "8px 0 8px -8px rgba(112,144,176,0.28)" }}>
           <Bi vi="Khuôn máy" zh="模具" en="Mold" center viClass="font-bold text-black text-sm" zhClass="font-bold text-black text-sm" enClass="font-bold text-black text-sm" />
         </th>
-        <th rowSpan={3} className="pe-th border-b border-r border-line px-3 py-3 font-bold text-center align-middle text-black" style={{ minWidth: 120 }}>
+        <th rowSpan={3} className="pe-th border-b border-r border-line px-3 py-3 font-bold text-center align-middle text-black !bg-white bg-white" style={{ minWidth: 120 }}>
           <Bi vi="Đơn hàng" zh="订单" en="Order" center viClass="font-bold text-black text-sm" zhClass="font-bold text-black text-sm" enClass="font-bold text-black text-sm" />
         </th>
-        <th rowSpan={3} className="pe-th border-b border-r border-line px-3 py-3 font-bold text-center align-middle text-black" style={{ minWidth: 110 }}>
+        <th rowSpan={3} className="pe-th border-b border-r border-line px-3 py-3 font-bold text-center align-middle text-black !bg-white bg-white" style={{ minWidth: 110 }}>
           <Bi vi="Cuộn màng" zh="卷膜" en="Film Roll" center viClass="font-bold text-black text-sm" zhClass="font-bold text-black text-sm" enClass="font-bold text-black text-sm" />
         </th>
         {dayCollapsed ? (
