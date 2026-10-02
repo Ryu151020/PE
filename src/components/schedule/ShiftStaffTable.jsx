@@ -26,13 +26,50 @@ export function ShiftStaffTable({ title, titleZh, colorClass, leaderId, teamLead
     return rows;
   }, [dayData, leaderId, teamLeaderIds, employeesById, shiftKey]);
 
+  const roleCounts = useMemo(() => {
+    let shiftLeader = 0, teamLeader = 0, technician = 0, worker = 0, other = 0;
+    groups.forEach((r) => {
+      if (r._role === POSITIONS.SHIFT_LEADER) shiftLeader++;
+      else if (r._role === POSITIONS.TEAM_LEADER) teamLeader++;
+      else if (r._role === POSITIONS.TECHNICIAN) technician++;
+      else if (r._role === POSITIONS.WORKER) worker++;
+      else if (r._role === POSITIONS.SUPPORT) other++;
+    });
+    return { shiftLeader, teamLeader, technician, worker, other };
+  }, [groups]);
+
   const displayTitle = lang === "zh" ? titleZh : lang === "en" ? (title.includes("Ngày") ? "Day Shift Staff" : "Night Shift Staff") : title;
 
   return (
     <div className={`${card} p-4`}>
-      <div className={`mb-4 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${colorClass}`}>
-        <span>{displayTitle}</span>
-        <span className="ml-1 rounded-full bg-white/60 px-1.5">{groups.length}</span>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2.5">
+        <div className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${colorClass}`}>
+          <span>{displayTitle}</span>
+          <span className="ml-1 rounded-full bg-white/70 px-1.5 text-ink">{groups.length}</span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-mute">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-canvas border border-line" title={lang === "zh" ? "班长" : "Ca trưởng"}>
+            <span>{lang === "zh" ? "班长" : lang === "en" ? "Leader" : "Ca trưởng"}:</span>
+            <strong className="text-ink font-bold">{roleCounts.shiftLeader}</strong>
+          </span>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-canvas border border-line" title={lang === "zh" ? "组长" : "Tổ trưởng"}>
+            <span>{lang === "zh" ? "组长" : lang === "en" ? "Team Leader" : "Tổ trưởng"}:</span>
+            <strong className="text-ink font-bold">{roleCounts.teamLeader}</strong>
+          </span>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-canvas border border-line" title={lang === "zh" ? "技术员" : "Kỹ thuật viên"}>
+            <span>{lang === "zh" ? "技术员" : lang === "en" ? "Technician" : "Kỹ thuật viên"}:</span>
+            <strong className="text-ink font-bold">{roleCounts.technician}</strong>
+          </span>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-canvas border border-line" title={lang === "zh" ? "工人" : "Công nhân"}>
+            <span>{lang === "zh" ? "工人" : lang === "en" ? "Worker" : "Công nhân"}:</span>
+            <strong className="text-ink font-bold">{roleCounts.worker}</strong>
+          </span>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-canvas border border-line" title={lang === "zh" ? "其他工人" : "Công nhân khác"}>
+            <span>{lang === "zh" ? "其他" : lang === "en" ? "Support" : "CN khác"}:</span>
+            <strong className="text-ink font-bold">{roleCounts.other}</strong>
+          </span>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">

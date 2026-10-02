@@ -8,6 +8,7 @@ import { ExcelImportModal } from "../components/ui/ExcelImportModal";
 import { SearchBox } from "../components/ui/Fields";
 import { PageHeader } from "../components/ui/PageHeader";
 import { Segmented } from "../components/ui/Segmented";
+import { SearchableSelect } from "../components/ui/SearchableSelect";
 import { SortableTh } from "../components/ui/SortableTh";
 import { useApp } from "../context/AppContext";
 import { downloadOrderTemplate, parseAndDedupOrders } from "../lib/excel";
@@ -63,6 +64,11 @@ export function OrdersPage() {
     });
     return map;
   }, [db.molds]);
+
+  const moldOptions = useMemo(
+    () => (db.molds || []).map((m) => ({ value: m.id, label: m.moldName })),
+    [db.molds]
+  );
 
   const updateOrder = (orderId, patch) => {
     setOrdersWithHistory((prev) =>
@@ -491,20 +497,17 @@ export function OrdersPage() {
                       onChange={(e) => updateOrder(o.id, { orderCode: e.target.value })}
                     />
                   </td>
-                  <td className={`px-3 py-2 text-center align-middle border-b border-r border-line ${selCls(o.id, "moldId")}`} onClick={() => setSelected({ rowId: o.id, colKey: "moldId" })}>
-                    <div className="flex justify-center">
-                      <select
-                        className={`${inputCls} v-input--sm text-sm text-center`}
-                        value={o.moldId || ""}
-                        onChange={(e) => updateOrder(o.id, { moldId: e.target.value || null })}
-                      >
-                        <option value=""></option>
-                        {db.molds.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.moldName}
-                          </option>
-                        ))}
-                      </select>
+                  <td className={`px-2 py-1.5 text-center align-middle border-b border-r border-line ${selCls(o.id, "moldId")}`} onClick={() => setSelected({ rowId: o.id, colKey: "moldId" })}>
+                    <div className="flex justify-center min-w-[110px] max-w-[160px] mx-auto">
+                      <SearchableSelect
+                        value={o.moldId || null}
+                        onChange={(val) => updateOrder(o.id, { moldId: val || null })}
+                        options={moldOptions}
+                        isMold={true}
+                        cellMode={false}
+                        placeholder="—"
+                        searchPlaceholder="Tìm khuôn... / 搜索..."
+                      />
                     </div>
                   </td>
                   <td className={`px-3 py-2 text-center align-middle border-b border-r border-line ${selCls(o.id, "size")}`} onClick={() => setSelected({ rowId: o.id, colKey: "size" })}>

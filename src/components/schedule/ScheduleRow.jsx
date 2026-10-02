@@ -5,7 +5,7 @@ import { ShiftOvertimeBadge } from "./ShiftOvertimeBadge";
 import { StackedStatusBadge } from "../ui/Badges";
 import { SearchableSelect } from "../ui/SearchableSelect";
 import { useApp } from "../../context/AppContext";
-import { MACHINE_STATUS_COLOR, MACHINE_STATUS_DEFS, MACHINE_STATUS_TEXT_COLOR, getMoldColor } from "../../lib/constants";
+import { MACHINE_STATUS_BOX_STYLES, MACHINE_STATUS_COLOR, MACHINE_STATUS_DEFS, MACHINE_STATUS_TEXT_COLOR, getMoldColor } from "../../lib/constants";
 import { getMachineStatusLabel } from "../../lib/i18n";
 import { entryMachineStatus } from "../../lib/schedule";
 
@@ -103,7 +103,12 @@ function MachineStatusCell({ machineStatus, onChange, lang, disabled }) {
         className="cursor-pointer transition-transform hover:scale-105 active:scale-95 focus:outline-none disabled:cursor-not-allowed disabled:transform-none select-none"
         title={disabled ? "" : "Bấm để đổi trạng thái máy"}
       >
-        <StackedStatusBadge vi={st?.vi} zh={st?.zh} className={MACHINE_STATUS_COLOR[machineStatus]} />
+        <span
+          style={MACHINE_STATUS_BOX_STYLES[machineStatus] || MACHINE_STATUS_BOX_STYLES.OPEN}
+          className="inline-flex items-center justify-center px-2 py-0.5 rounded-xs border text-[13px] font-semibold leading-normal"
+        >
+          {getMachineStatusLabel(machineStatus, lang)}
+        </span>
       </div>
 
       {open &&

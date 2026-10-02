@@ -4,7 +4,7 @@ import { useApp } from "../../context/AppContext";
 import { PLAN_STATUS, PLAN_STATUS_DEFS } from "../../lib/constants";
 import { t } from "../../lib/i18n";
 
-export function ScheduleToolbar({ editable, planStatus, canUndo, canRedo, role, onUndo, onRedo, onToggleLock, onGetData, onClearAll }) {
+export function ScheduleToolbar({ editable, hasData, planStatus, canUndo, canRedo, role, onUndo, onRedo, onToggleLock, onGetData, onClearAll }) {
   const { lang = "vi" } = useApp() || {};
   const isViewer = role === "VIEWER", isLocked = planStatus === PLAN_STATUS.LOCKED;
   const st = PLAN_STATUS_DEFS[planStatus] || PLAN_STATUS_DEFS.SAVED;
@@ -34,7 +34,7 @@ export function ScheduleToolbar({ editable, planStatus, canUndo, canRedo, role, 
             <button
               className="h-10 px-4 rounded-full bg-[#FFF5F5] hover:bg-[#FFEAE8] text-[#EE5D50] border border-[#EE5D50]/20 font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               onClick={onClearAll}
-              disabled={isLocked || isViewer}
+              disabled={!hasData || isLocked || isViewer}
               title={t("clearAll", lang)}
             >
               <Trash2 size={14} />
@@ -52,8 +52,9 @@ export function ScheduleToolbar({ editable, planStatus, canUndo, canRedo, role, 
         </button>
         {(role === "ADMIN" || role === "MANAGER") && (
           <button
-            className="w-10 h-10 rounded-full bg-white border border-line/80 hover:bg-[#F4F7FE] hover:text-[#4318FF] text-body flex items-center justify-center transition-all shadow-xs cursor-pointer"
+            className="w-10 h-10 rounded-full bg-white border border-line/80 hover:bg-[#F4F7FE] hover:text-[#4318FF] text-body flex items-center justify-center transition-all shadow-xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={onToggleLock}
+            disabled={!hasData}
             title={isLocked ? t("unlockPlan", lang) : t("lockPlan", lang)}
           >
             {isLocked ? <Unlock size={15} /> : <Lock size={15} />}

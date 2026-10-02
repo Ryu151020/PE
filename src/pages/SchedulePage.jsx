@@ -12,6 +12,7 @@ import { useApp } from "../context/AppContext";
 import { PLAN_STATUS, POSITIONS, isActive } from "../lib/constants";
 import { TODAY_KEY, toDisplay } from "../lib/dates";
 import { byId, computeKpis, copySchedule, createHistoryStack, emptyDay, sanitizeDay, withMachineStatus } from "../lib/schedule";
+import { deleteFromSupabase, isSupabaseConfigured, scheduleToDb, syncTableToSupabase } from "../lib/supabase";
 import { btnPrimary, btnSecondary, card } from "../lib/styles";
 import { t } from "../lib/i18n";
 
@@ -48,11 +49,12 @@ export function SchedulePage() {
   const applyChange = (updater) => {
     const base = dayData || emptyDay(dateKey, machines);
     const next = typeof updater === "function" ? updater(base) : updater;
+    const nowIso = new Date().toISOString();
     const saved = {
       ...withMachineStatus(next, machines),
       status: isLocked ? PLAN_STATUS.LOCKED : PLAN_STATUS.SAVED,
       updatedBy: userName,
-      updatedAt: new Date().toISOString(),
+      updatedAt: nowIso,
     };
     historyRef.current?.push(saved);
     setDayDataLocal(saved);
@@ -63,6 +65,13 @@ export function SchedulePage() {
         [dateKey]: saved,
       },
     }));
+
+    if (isSupabaseConfigured) {
+      const row = scheduleToDb(dateKey, saved);
+      syncTableToSupabase("schedules", [row], "date").catch((err) =>
+        console.error("Supabase sync schedule error:", err)
+      );
+    }
   };
 
   const handlePatchEntry = (machineId, patch) =>
@@ -127,19 +136,43 @@ export function SchedulePage() {
 
   const handleClearAll = () => {
     confirmAction(
-      "Xóa toàn bộ dữ liệu kế hoạch của ngày này? Hành động này có thể hoàn tác bằng nút Undo. / 清空当天全部排班数据？可用撤销按钮恢复。",
-      () => {
-        applyChange(() => ({
-          ...emptyDay(dateKey, machines),
-          dayLeader: null,
-          dayTeamLeaders: [],
-          nightLeader: null,
-          nightTeamLeaders: [],
-          status: PLAN_STATUS.SAVED,
-        }));
-        pushToast(lang === "zh" ? "已清空当天排班并自动保存" : lang === "en" ? "Schedule cleared and auto-saved" : "Đã xóa toàn bộ kế hoạch và tự động lưu", "info");
+      `Bạn có chắc chắn muốn xóa toàn bộ kế hoạch ngày ${toDisplay(dateKey)} không? Kế hoạch sẽ được xóa hoàn toàn và trở về trạng thái trống ban đầu.\n\n/ 确定要清空该日期的全部排班计划吗？`,
+      async () => {
+        try {
+          if (isSupabaseConfigured) {
+            await deleteFromSupabase("schedules", dateKey);
+          }
+
+          // Trở về giao diện bảng trống (Chưa có kế hoạch cho ngày ...)
+          setDayDataLocal(null);
+          historyRef.current = null;
+          setDb((prevDb) => {
+            const nextSchedules = { ...(prevDb.schedules || {}) };
+            delete nextSchedules[dateKey];
+            return {
+              ...prevDb,
+              schedules: nextSchedules,
+            };
+          });
+
+          pushToast(
+            lang === "zh"
+              ? "已清空并删除当天排班计划"
+              : lang === "en"
+              ? "Schedule cleared for this date"
+              : `Đã xóa toàn bộ kế hoạch ngày ${toDisplay(dateKey)}`,
+            "info"
+          );
+        } catch (err) {
+          console.error("Clear schedule error:", err);
+          pushToast("Lỗi xóa kế hoạch: " + err.message, "error");
+        }
       },
-      { title: "Xóa toàn bộ kế hoạch / 清空整个计划", confirmLabel: "Xóa toàn bộ / 清空", danger: true }
+      {
+        title: lang === "zh" ? "清空当天计划" : lang === "en" ? "Delete Schedule" : "Xóa toàn bộ kế hoạch",
+        confirmLabel: lang === "zh" ? "Xóa toàn bộ / 清空" : lang === "en" ? "Delete All" : "Xóa toàn bộ",
+        danger: true,
+      }
     );
   };
 
@@ -154,17 +187,32 @@ export function SchedulePage() {
     return () => window.removeEventListener("keydown", onKey);
   }, [editable]);
 
-  const handleStartNew = () => {
+  const handleStartNew = async () => {
+    const nowIso = new Date().toISOString();
+    const nowMs = Date.now();
     const fresh = emptyDay(dateKey, machines);
+    const stampedEntries = {};
+    Object.entries(fresh.entries || {}).forEach(([mId, entry]) => {
+      stampedEntries[mId] = { ...entry, updatedAt: nowMs };
+    });
     const saved = {
-      ...withMachineStatus(fresh, machines),
+      ...withMachineStatus({ ...fresh, entries: stampedEntries }, machines),
       status: PLAN_STATUS.SAVED,
       updatedBy: userName,
-      updatedAt: new Date().toISOString(),
+      updatedAt: nowIso,
     };
     setDb((prev) => ({ ...prev, schedules: { ...prev.schedules, [dateKey]: saved } }));
     setDayDataLocal(saved);
     historyRef.current = createHistoryStack(saved);
+
+    if (isSupabaseConfigured) {
+      try {
+        const row = scheduleToDb(dateKey, saved);
+        await syncTableToSupabase("schedules", [row], "date");
+      } catch (err) {
+        console.error("Direct Supabase sync on start new failed:", err);
+      }
+    }
     pushToast(lang === "zh" ? "已创建排班计划并自动保存" : lang === "en" ? "Schedule created and auto-saved" : "Đã tạo mới kế hoạch và tự động lưu", "success");
   };
 
@@ -184,9 +232,54 @@ export function SchedulePage() {
   };
 
   const buildCopyPreview = (sourceKey, options) => copySchedule({ sourceDay: db.schedules[sourceKey], targetDateKey: dateKey, machines, employeesById, options });
-  const applyCopiedData = (copiedDay) => {
-    applyChange(() => copiedDay);
-    pushToast(lang === "zh" ? "已应用排班数据并自动保存" : lang === "en" ? "Data applied and auto-saved" : "Đã áp dụng và tự động lưu kế hoạch", "success");
+  
+  const applyCopiedData = async (copiedDay) => {
+    if (!copiedDay) return;
+    const nowIso = new Date().toISOString();
+    const nowMs = Date.now();
+    const stampedEntries = {};
+    Object.entries(copiedDay.entries || {}).forEach(([mId, entry]) => {
+      stampedEntries[mId] = {
+        ...entry,
+        updatedAt: nowMs,
+      };
+    });
+
+    const saved = {
+      ...withMachineStatus({ ...copiedDay, entries: stampedEntries }, machines),
+      date: dateKey,
+      status: PLAN_STATUS.SAVED,
+      updatedBy: userName,
+      updatedAt: nowIso,
+    };
+
+    historyRef.current = createHistoryStack(saved);
+    setDayDataLocal(saved);
+    setDb((prevDb) => ({
+      ...prevDb,
+      schedules: {
+        ...prevDb.schedules,
+        [dateKey]: saved,
+      },
+    }));
+
+    if (isSupabaseConfigured) {
+      try {
+        const row = scheduleToDb(dateKey, saved);
+        await syncTableToSupabase("schedules", [row], "date");
+      } catch (err) {
+        console.error("Direct Supabase sync on copy schedule failed:", err);
+      }
+    }
+
+    pushToast(
+      lang === "zh"
+        ? "已应用排班数据并自动保存"
+        : lang === "en"
+        ? "Data applied and auto-saved"
+        : "Đã áp dụng và tự động lưu kế hoạch",
+      "success"
+    );
   };
 
   return (
@@ -205,7 +298,8 @@ export function SchedulePage() {
           <div className="ml-auto">
             <ScheduleToolbar
               editable={editable}
-              planStatus={dayData?.status || PLAN_STATUS.SAVED}
+              hasData={Boolean(dayData)}
+              planStatus={dayData ? (dayData.status || PLAN_STATUS.SAVED) : PLAN_STATUS.DRAFT}
               canUndo={historyRef.current?.canUndo() || false}
               canRedo={historyRef.current?.canRedo() || false}
               role={role}
@@ -254,7 +348,14 @@ export function SchedulePage() {
           <MoldOpenStats day={dayData} machines={machines} moldsById={moldsById} />
         </>
       )}
-      <CopyScheduleModal open={copyModalOpen} onClose={() => setCopyModalOpen(false)} targetDateKey={dateKey} availableDates={Object.keys(db.schedules).filter((k) => db.schedules[k]).sort().reverse()} buildPreview={buildCopyPreview} onApply={applyCopiedData} />
+      <CopyScheduleModal
+        open={copyModalOpen}
+        onClose={() => setCopyModalOpen(false)}
+        targetDateKey={dateKey}
+        availableDates={Object.keys(db.schedules || {}).filter((k) => db.schedules[k] && Object.keys(db.schedules[k].entries || {}).length > 0).sort().reverse()}
+        buildPreview={buildCopyPreview}
+        onApply={applyCopiedData}
+      />
     </div>
   );
 }

@@ -134,21 +134,54 @@ export function moldsOpenByOrderAndMold(day, machines) {
 
 export function copySchedule({ sourceDay, targetDateKey, machines, employeesById, options }) {
   const { copyMachines = true, copyOrders = true, copyWorkers = true, copyTechnicians = true, copyOtherWorkers = true, copyOvertime = true, copyLeaders = true } = options || {};
-  const filterSched = (ids) => (ids || []).filter((id) => isSchedulableOn(employeesById[id], targetDateKey));
+  const filterSched = (ids) =>
+    (ids || []).filter((id) => {
+      const emp = employeesById ? employeesById[id] : null;
+      return !emp || isSchedulableOn(emp, targetDateKey);
+    });
+  const now = Date.now();
   const entries = {};
   machines.forEach((m) => {
     const src = sourceDay?.entries?.[m.id];
     const base = emptyEntryFor(m);
-    if (!src) { entries[m.id] = base; return; }
-    const dW = copyWorkers ? filterSched(src.dayShift.workers) : [];
-    const nW = copyWorkers ? filterSched(src.nightShift.workers) : [];
+    if (!src) {
+      entries[m.id] = { ...base, updatedAt: now };
+      return;
+    }
+    const dW = copyWorkers ? filterSched(src.dayShift?.workers) : [];
+    const nW = copyWorkers ? filterSched(src.nightShift?.workers) : [];
     entries[m.id] = {
-      machineId: m.id, machineStatus: copyMachines ? (src.machineStatus || m.status) : base.machineStatus, moldId: copyMachines ? src.moldId : base.moldId, orderId: copyOrders ? src.orderId : base.orderId, filmRollName: copyOrders ? src.filmRollName : "",
-      dayShift: { workers: dW, overtimeHours: copyOvertime && dW.length > 0 ? src.dayShift.overtimeHours : 0, technicians: copyTechnicians ? filterSched(src.dayShift.technicians) : [], otherWorkers: copyOtherWorkers ? filterSched(src.dayShift.otherWorkers) : [] },
-      nightShift: { workers: nW, overtimeHours: copyOvertime && nW.length > 0 ? src.nightShift.overtimeHours : 0, technicians: copyTechnicians ? filterSched(src.nightShift.technicians) : [], otherWorkers: copyOtherWorkers ? filterSched(src.nightShift.otherWorkers) : [] },
+      machineId: m.id,
+      machineStatus: copyMachines ? (src.machineStatus || m.status) : base.machineStatus,
+      moldId: copyMachines ? src.moldId : base.moldId,
+      orderId: copyOrders ? src.orderId : base.orderId,
+      filmRollName: copyOrders ? (src.filmRollName || "") : "",
+      dayShift: {
+        workers: dW,
+        overtimeHours: copyOvertime && dW.length > 0 ? (src.dayShift?.overtimeHours || 0) : 0,
+        technicians: copyTechnicians ? filterSched(src.dayShift?.technicians) : [],
+        otherWorkers: copyOtherWorkers ? filterSched(src.dayShift?.otherWorkers) : [],
+      },
+      nightShift: {
+        workers: nW,
+        overtimeHours: copyOvertime && nW.length > 0 ? (src.nightShift?.overtimeHours || 0) : 0,
+        technicians: copyTechnicians ? filterSched(src.nightShift?.technicians) : [],
+        otherWorkers: copyOtherWorkers ? filterSched(src.nightShift?.otherWorkers) : [],
+      },
+      updatedAt: now,
     };
   });
-  return { date: targetDateKey, entries, dayLeader: copyLeaders ? filterSched([sourceDay?.dayLeader])[0] || null : null, dayTeamLeaders: copyLeaders ? filterSched(sourceDay?.dayTeamLeaders) : [], nightLeader: copyLeaders ? filterSched([sourceDay?.nightLeader])[0] || null : null, nightTeamLeaders: copyLeaders ? filterSched(sourceDay?.nightTeamLeaders) : [], status: PLAN_STATUS.DRAFT, updatedBy: null, updatedAt: null };
+  return {
+    date: targetDateKey,
+    entries,
+    dayLeader: copyLeaders ? filterSched([sourceDay?.dayLeader])[0] || null : null,
+    dayTeamLeaders: copyLeaders ? filterSched(sourceDay?.dayTeamLeaders) : [],
+    nightLeader: copyLeaders ? filterSched([sourceDay?.nightLeader])[0] || null : null,
+    nightTeamLeaders: copyLeaders ? filterSched(sourceDay?.nightTeamLeaders) : [],
+    status: PLAN_STATUS.SAVED,
+    updatedBy: null,
+    updatedAt: new Date().toISOString(),
+  };
 }
 
 export function createHistoryStack(initial, limit = 50) {

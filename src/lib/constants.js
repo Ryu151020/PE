@@ -74,6 +74,29 @@ export const MACHINE_STATUS_COLOR = {
 
 export const MACHINE_STATUS_TEXT_COLOR = { OPEN: "#05CD99", STOPPED: "#EE5D50", MAINTENANCE: "#C9820A", SAMPLE: "#4318FF" };
 
+export const MACHINE_STATUS_BOX_STYLES = {
+  OPEN: {
+    backgroundColor: "#E6FAF5",
+    color: "#05CD99",
+    borderColor: "rgba(5, 205, 153, 0.4)",
+  },
+  STOPPED: {
+    backgroundColor: "#FFF5F5",
+    color: "#EE5D50",
+    borderColor: "rgba(238, 93, 80, 0.4)",
+  },
+  MAINTENANCE: {
+    backgroundColor: "#FFF9E6",
+    color: "#C9820A",
+    borderColor: "rgba(201, 130, 10, 0.4)",
+  },
+  SAMPLE: {
+    backgroundColor: "#F4F7FE",
+    color: "#4318FF",
+    borderColor: "rgba(67, 24, 255, 0.4)",
+  },
+};
+
 export const MOLD_STATUS_DEFS = [
   { vi: "Sẵn sàng", zh: "可用" },
   { vi: "Đang dùng", zh: "使用中" },

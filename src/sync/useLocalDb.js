@@ -63,7 +63,6 @@ export function useLocalDb() {
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
   const prevDbRef = useRef(db);
   const isDeletingRef = useRef(false);
-  const isRemoteUpdateRef = useRef(false);
   const broadcastRef = useRef(null);
 
   // Fetch full data from Supabase on mount if configured
@@ -115,7 +114,6 @@ export function useLocalDb() {
           schedules: remoteData.schedules || {},
         };
 
-        isRemoteUpdateRef.current = true;
         setDbState(freshData);
         prevDbRef.current = freshData;
         storage.set(LOCAL_DB_KEY, freshData);
@@ -138,7 +136,6 @@ export function useLocalDb() {
     if (eventType === "DELETE") {
       const deletedId = oldRow?.id;
       if (!deletedId) return;
-      isRemoteUpdateRef.current = true;
       setDbState((prev) => {
         const nextOrders = (prev.orders || []).filter((o) => o.id !== deletedId);
         const nextMachines = (prev.machines || []).map((m) =>
@@ -157,7 +154,6 @@ export function useLocalDb() {
         return;
       }
       const incoming = cleanOrder(orderFromDb(newRow));
-      isRemoteUpdateRef.current = true;
       setDbState((prev) => {
         if ((prev.orders || []).some((o) => o.id === incoming.id)) return prev;
         const nextOrders = [...(prev.orders || []), incoming];
@@ -169,7 +165,6 @@ export function useLocalDb() {
     } else if (eventType === "UPDATE") {
       if (!newRow?.id || deletedOrderIds.has(newRow.id)) return;
       const incoming = cleanOrder(orderFromDb(newRow));
-      isRemoteUpdateRef.current = true;
       setDbState((prev) => {
         const nextOrders = (prev.orders || []).map((o) => (o.id === incoming.id ? incoming : o));
         const nextState = { ...prev, orders: nextOrders };
@@ -188,7 +183,6 @@ export function useLocalDb() {
     if (eventType === "DELETE") {
       const deletedId = oldRow?.id;
       if (!deletedId) return;
-      isRemoteUpdateRef.current = true;
       setDbState((prev) => {
         const nextEmployees = (prev.employees || []).filter((e) => e.id !== deletedId);
         const nextState = { ...prev, employees: nextEmployees };
@@ -204,7 +198,6 @@ export function useLocalDb() {
         return;
       }
       const incoming = employeeFromDb(newRow);
-      isRemoteUpdateRef.current = true;
       setDbState((prev) => {
         if ((prev.employees || []).some((e) => e.id === incoming.id)) return prev;
         const nextEmployees = [...(prev.employees || []), incoming];
@@ -216,7 +209,6 @@ export function useLocalDb() {
     } else if (eventType === "UPDATE") {
       if (!newRow?.id || deletedEmpIds.has(newRow.id)) return;
       const incoming = employeeFromDb(newRow);
-      isRemoteUpdateRef.current = true;
       setDbState((prev) => {
         const nextEmployees = (prev.employees || []).map((e) => (e.id === incoming.id ? incoming : e));
         const nextState = { ...prev, employees: nextEmployees };
@@ -235,7 +227,6 @@ export function useLocalDb() {
     if (eventType === "DELETE") {
       const deletedId = oldRow?.id;
       if (!deletedId) return;
-      isRemoteUpdateRef.current = true;
       setDbState((prev) => {
         const nextMolds = (prev.molds || []).filter((m) => m.id !== deletedId);
         const nextMachines = (prev.machines || []).map((m) =>
@@ -254,7 +245,6 @@ export function useLocalDb() {
         return;
       }
       const incoming = moldFromDb(newRow);
-      isRemoteUpdateRef.current = true;
       setDbState((prev) => {
         if ((prev.molds || []).some((m) => m.id === incoming.id)) return prev;
         const nextMolds = [...(prev.molds || []), incoming];
@@ -266,7 +256,6 @@ export function useLocalDb() {
     } else if (eventType === "UPDATE") {
       if (!newRow?.id || deletedMoldIds.has(newRow.id)) return;
       const incoming = moldFromDb(newRow);
-      isRemoteUpdateRef.current = true;
       setDbState((prev) => {
         const nextMolds = (prev.molds || []).map((m) => (m.id === incoming.id ? incoming : m));
         const nextState = { ...prev, molds: nextMolds };
@@ -283,7 +272,6 @@ export function useLocalDb() {
     if (eventType === "UPDATE" || eventType === "INSERT") {
       if (!newRow?.id) return;
       const incoming = machineFromDb(newRow);
-      isRemoteUpdateRef.current = true;
       setDbState((prev) => {
         const nextMachines = (prev.machines || []).map((m) => (m.id === incoming.id ? incoming : m));
         const nextState = { ...prev, machines: nextMachines };
@@ -301,7 +289,6 @@ export function useLocalDb() {
     if (eventType === "DELETE") {
       const targetDate = oldRow?.date;
       if (!targetDate) return;
-      isRemoteUpdateRef.current = true;
       setDbState((prev) => {
         const nextSchedules = { ...(prev.schedules || {}) };
         delete nextSchedules[targetDate];
@@ -315,7 +302,6 @@ export function useLocalDb() {
       const remoteSched = scheduleFromDb(newRow);
       const targetDate = remoteSched.date;
 
-      isRemoteUpdateRef.current = true;
       setDbState((prev) => {
         const existing = prev.schedules?.[targetDate];
         if (!existing) {
@@ -379,7 +365,6 @@ export function useLocalDb() {
         broadcastRef.current = broadcast;
         broadcast.onmessage = (e) => {
           if (e.data?.type === "LOCAL_DB_SYNC" && e.data?.data) {
-            isRemoteUpdateRef.current = true;
             setDbState(e.data.data);
             prevDbRef.current = e.data.data;
           }
@@ -391,7 +376,6 @@ export function useLocalDb() {
       if (e.key === LOCAL_DB_KEY && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
-          isRemoteUpdateRef.current = true;
           setDbState(parsed);
           prevDbRef.current = parsed;
         } catch {}
@@ -577,7 +561,6 @@ export function useLocalDb() {
       setDbState((prev) => {
         const next = typeof updater === "function" ? updater(prev) : updater;
         storage.set(LOCAL_DB_KEY, next);
-        const previous = prevDbRef.current || prev;
         prevDbRef.current = next;
 
         // Broadcast to other tabs on the same machine
@@ -587,12 +570,8 @@ export function useLocalDb() {
           }
         } catch {}
 
-        // Start delta sync immediately if not an incoming remote update
-        if (!isRemoteUpdateRef.current) {
-          syncChangesToSupabase(previous, next);
-        } else {
-          isRemoteUpdateRef.current = false;
-        }
+        // Always sync local user changes to Supabase immediately
+        syncChangesToSupabase(prev, next);
         return next;
       });
     },
