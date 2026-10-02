@@ -379,11 +379,11 @@ export function EmployeesPage() {
         {/* Table Container - rounded-xl border border-line with spacing from card margins */}
         <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-330px)] rounded-xl border border-line">
           <table ref={tableRef} className="w-full text-sm border-separate border-spacing-0">
-            <thead className="sticky top-0 z-10 shadow-xs">
+            <thead className="sticky top-0 z-20 shadow-xs">
               <tr className="bg-canvas border-b border-line h-11">
                 <th
                   className="px-3 py-2.5 text-center align-middle font-bold text-[#1B2559] text-sm whitespace-nowrap bg-canvas border-l border-b border-r border-line z-30"
-                  style={{ position: "sticky", left: 0, top: 0, width: 50, minWidth: 50, maxWidth: 50 }}
+                  style={{ position: "sticky", left: 0, top: 0, zIndex: 30, width: 50, minWidth: 50, maxWidth: 50 }}
                 >
                   STT
                 </th>
@@ -397,7 +397,7 @@ export function EmployeesPage() {
                   onFilterChange={handleFilterChange}
                   data={tabEmployees}
                   className="z-30"
-                  style={{ position: "sticky", left: 50, top: 0, width: 120, minWidth: 120, maxWidth: 120 }}
+                  style={{ position: "sticky", left: 50, top: 0, zIndex: 30, width: 120, minWidth: 120, maxWidth: 120 }}
                 />
                 <SortableTh
                   labelVi="Tên VN"
@@ -409,7 +409,7 @@ export function EmployeesPage() {
                   onFilterChange={handleFilterChange}
                   data={tabEmployees}
                   className="z-30"
-                  style={{ position: "sticky", left: 170, top: 0, width: 210, minWidth: 210, maxWidth: 210, boxShadow: "4px 0 8px -4px rgba(112,144,176,0.28)" }}
+                  style={{ position: "sticky", left: 170, top: 0, zIndex: 30, width: 210, minWidth: 210, maxWidth: 210, boxShadow: "4px 0 8px -4px rgba(112,144,176,0.28)" }}
                 />
                 <SortableTh
                   labelVi="Tên Trung"
