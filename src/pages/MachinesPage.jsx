@@ -240,9 +240,9 @@ export function MachinesPage() {
       </div>
 
       {/* Enclosed Card Container for Toolbar and Table */}
-      <div className={`${card} overflow-hidden bg-white shadow-xs`}>
+      <div className={`${card} p-5 bg-white shadow-xs`}>
         {/* Action Toolbar */}
-        <div className="p-5 pb-4 border-b border-line/60 flex items-center justify-end gap-3 flex-wrap bg-white">
+        <div className="flex items-center justify-end gap-3 flex-wrap mb-4">
           <div className="flex items-center gap-2.5 ml-auto">
             <UndoRedoButtons canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
             <AddActionButton
@@ -255,7 +255,8 @@ export function MachinesPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-315px)]">
+        {/* Table Container - rounded-xl border border-line with spacing from card margins */}
+        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-330px)] rounded-xl border border-line">
           <table ref={tableRef} className="w-full table-fixed text-sm border-separate border-spacing-0">
             <colgroup>
               <col className="w-[8%]" />
@@ -264,9 +265,9 @@ export function MachinesPage() {
               <col className="w-[24%]" />
               <col className="w-[16%]" />
             </colgroup>
-            <thead className="pe-thead text-sm sticky top-0 z-10 bg-[#F4F7FE] shadow-xs">
-              <tr className="h-11">
-                <th className="px-3 py-2.5 text-center align-middle font-bold text-[#1B2559] text-sm whitespace-nowrap bg-[#F4F7FE] border-l border-b border-r border-line">
+            <thead className="sticky top-0 z-10 shadow-xs">
+              <tr className="bg-canvas border-b border-line h-11">
+                <th className="px-3 py-2.5 text-center align-middle font-bold text-[#1B2559] text-sm whitespace-nowrap bg-canvas border-l border-b border-r border-line">
                   {t("stt", lang)}
                 </th>
                 <SortableTh
@@ -306,7 +307,7 @@ export function MachinesPage() {
                   data={molds}
                   center={true}
                 />
-                <th className="px-3 py-2.5 text-center align-middle font-bold text-[#1B2559] text-sm whitespace-nowrap bg-[#F4F7FE] border-b border-r border-line">
+                <th className="px-3 py-2.5 text-center align-middle font-bold text-[#1B2559] text-sm whitespace-nowrap bg-canvas border-b border-r border-line">
                   {t("actions", lang)}
                 </th>
               </tr>

@@ -173,7 +173,7 @@ export function SortableTh({
   return (
     <th
       ref={thRef}
-      className={`px-3 py-2.5 ${center ? "text-center" : "text-left"} align-middle font-bold text-[#1B2559] text-sm select-none whitespace-nowrap transition-colors bg-[#F4F7FE] border-b border-r border-line ${
+      className={`px-3 py-2.5 ${center ? "text-center" : "text-left"} align-middle font-bold text-[#1B2559] text-sm select-none whitespace-nowrap transition-colors bg-canvas border-b border-r border-line ${
         isOpen ? "!bg-[#E8EDFB]" : "hover:bg-[#EAEFFC]"
       } ${className}`}
       style={style}

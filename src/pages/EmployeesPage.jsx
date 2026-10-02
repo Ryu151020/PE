@@ -353,9 +353,9 @@ export function EmployeesPage() {
       </div>
 
       {/* Enclosed Card Container for Toolbar and Table */}
-      <div className={`${card} overflow-hidden bg-white shadow-xs`}>
+      <div className={`${card} p-5 bg-white shadow-xs`}>
         {/* Action Toolbar */}
-        <div className="p-5 pb-4 border-b border-line/60 flex items-center justify-between gap-3 flex-wrap bg-white">
+        <div className="flex items-center justify-between gap-3 flex-wrap mb-4">
           <Segmented
             value={tab}
             onChange={setTab}
@@ -376,12 +376,13 @@ export function EmployeesPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-315px)]">
+        {/* Table Container - rounded-xl border border-line with spacing from card margins */}
+        <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-330px)] rounded-xl border border-line">
           <table ref={tableRef} className="w-full text-sm border-separate border-spacing-0">
-            <thead className="pe-thead text-sm sticky top-0 z-10 bg-[#F4F7FE] shadow-xs">
-              <tr className="h-11">
+            <thead className="sticky top-0 z-10 shadow-xs">
+              <tr className="bg-canvas border-b border-line h-11">
                 <th
-                  className="px-3 py-2.5 text-center align-middle font-bold text-[#1B2559] text-sm whitespace-nowrap bg-[#F4F7FE] border-l border-b border-r border-line z-30"
+                  className="px-3 py-2.5 text-center align-middle font-bold text-[#1B2559] text-sm whitespace-nowrap bg-canvas border-l border-b border-r border-line z-30"
                   style={{ position: "sticky", left: 0, top: 0, width: 50, minWidth: 50, maxWidth: 50 }}
                 >
                   STT
@@ -524,7 +525,7 @@ export function EmployeesPage() {
                   data={tabEmployees}
                   className="min-w-[170px]"
                 />
-                <th className="px-3 py-2.5 text-center align-middle font-bold text-[#1B2559] text-sm whitespace-nowrap min-w-[100px] bg-[#F4F7FE] border-b border-r border-line">
+                <th className="px-3 py-2.5 text-center align-middle font-bold text-[#1B2559] text-sm whitespace-nowrap min-w-[100px] bg-canvas border-b border-r border-line">
                   {t("actions", lang)}
                 </th>
               </tr>
