@@ -22,11 +22,11 @@ import { createBlankDb } from "../lib/seed";
 import { inRange } from "../lib/dates";
 import { storage } from "./storage";
 
-const LOCAL_DB_KEY = "pe_local_db_v4";
-const DELETED_ORDERS_KEY = "pe_deleted_order_ids";
-const DELETED_EMPLOYEES_KEY = "pe_deleted_employee_ids";
-const DELETED_MOLDS_KEY = "pe_deleted_mold_ids";
-const DELETED_SCHEDULES_KEY = "pe_deleted_schedule_dates";
+export const LOCAL_DB_KEY = "pe_local_db_v4";
+export const DELETED_ORDERS_KEY = "pe_deleted_order_ids";
+export const DELETED_EMPLOYEES_KEY = "pe_deleted_employee_ids";
+export const DELETED_MOLDS_KEY = "pe_deleted_mold_ids";
+export const DELETED_SCHEDULES_KEY = "pe_deleted_schedule_dates";
 
 // Clean up legacy storage versions
 try {
@@ -50,6 +50,13 @@ export function useLocalDb() {
     const saved = storage.get(LOCAL_DB_KEY);
     if (saved && saved.machines && saved.machines.length > 0) {
       if (saved.orders) saved.orders = saved.orders.map(cleanOrder);
+      // Prune any schedules marked as deleted in tombstones
+      const deletedSchedDates = new Set(storage.get(DELETED_SCHEDULES_KEY) || []);
+      if (deletedSchedDates.size > 0 && saved.schedules) {
+        deletedSchedDates.forEach((d) => {
+          delete saved.schedules[d];
+        });
+      }
       return saved;
     }
     const initial = createBlankDb();
@@ -79,6 +86,7 @@ export function useLocalDb() {
         const deletedOrderIds = new Set(storage.get(DELETED_ORDERS_KEY) || []);
         const deletedEmpIds = new Set(storage.get(DELETED_EMPLOYEES_KEY) || []);
         const deletedMoldIds = new Set(storage.get(DELETED_MOLDS_KEY) || []);
+        const deletedSchedDates = new Set(storage.get(DELETED_SCHEDULES_KEY) || []);
 
         // Filter out any ghost rows that were deleted locally
         const validOrders = (remoteData.orders || []).filter((o) => {
@@ -105,13 +113,22 @@ export function useLocalDb() {
           return true;
         });
 
+        const validSchedules = {};
+        Object.entries(remoteData.schedules || {}).forEach(([d, s]) => {
+          if (deletedSchedDates.has(d)) {
+            deleteFromSupabase("schedules", d);
+            return;
+          }
+          validSchedules[d] = s;
+        });
+
         const cleanedOrders = validOrders.map(cleanOrder);
         const freshData = {
           employees: validEmployees,
           molds: validMolds,
           orders: cleanedOrders,
           machines: remoteData.machines || [],
-          schedules: remoteData.schedules || {},
+          schedules: validSchedules,
         };
 
         setDbState(freshData);
@@ -285,6 +302,7 @@ export function useLocalDb() {
   const handleRemoteSchedule = useCallback((payload) => {
     if (isDeletingRef.current) return;
     const { eventType, new: newRow, old: oldRow } = payload;
+    const deletedSchedDates = new Set(storage.get(DELETED_SCHEDULES_KEY) || []);
 
     if (eventType === "DELETE") {
       const targetDate = oldRow?.date;
@@ -299,6 +317,11 @@ export function useLocalDb() {
       });
     } else if (eventType === "INSERT" || eventType === "UPDATE") {
       if (!newRow?.date) return;
+      if (deletedSchedDates.has(newRow.date)) {
+        // If row was marked deleted, ensure it's deleted from Supabase and drop it
+        deleteFromSupabase("schedules", newRow.date);
+        return;
+      }
       const remoteSched = scheduleFromDb(newRow);
       const targetDate = remoteSched.date;
 
@@ -365,8 +388,15 @@ export function useLocalDb() {
         broadcastRef.current = broadcast;
         broadcast.onmessage = (e) => {
           if (e.data?.type === "LOCAL_DB_SYNC" && e.data?.data) {
-            setDbState(e.data.data);
-            prevDbRef.current = e.data.data;
+            const data = e.data.data;
+            const delSched = new Set(storage.get(DELETED_SCHEDULES_KEY) || []);
+            if (delSched.size > 0 && data.schedules) {
+              delSched.forEach((d) => {
+                delete data.schedules[d];
+              });
+            }
+            setDbState(data);
+            prevDbRef.current = data;
           }
         };
       }
@@ -376,6 +406,12 @@ export function useLocalDb() {
       if (e.key === LOCAL_DB_KEY && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
+          const delSched = new Set(storage.get(DELETED_SCHEDULES_KEY) || []);
+          if (delSched.size > 0 && parsed.schedules) {
+            delSched.forEach((d) => {
+              delete parsed.schedules[d];
+            });
+          }
           setDbState(parsed);
           prevDbRef.current = parsed;
         } catch {}
@@ -531,8 +567,10 @@ export function useLocalDb() {
 
       // 5. Schedules changed
       if (prev.schedules !== next.schedules) {
+        const deletedSchedDates = new Set(storage.get(DELETED_SCHEDULES_KEY) || []);
         const nextKeys = Object.keys(next.schedules || {});
         for (const key of nextKeys) {
+          if (deletedSchedDates.has(key)) continue;
           if (next.schedules[key] !== prev.schedules?.[key]) {
             const row = scheduleToDb(key, next.schedules[key]);
             const res = await syncTableToSupabase("schedules", [row], "date");
@@ -544,6 +582,9 @@ export function useLocalDb() {
         const nextKeysSet = new Set(nextKeys);
         const removedKeys = prevKeys.filter((k) => !nextKeysSet.has(k) || !next.schedules[k]);
         if (removedKeys.length > 0) {
+          const curDel = new Set(storage.get(DELETED_SCHEDULES_KEY) || []);
+          removedKeys.forEach((k) => curDel.add(k));
+          storage.set(DELETED_SCHEDULES_KEY, Array.from(curDel));
           await bulkDeleteFromSupabase("schedules", removedKeys);
         }
       }
@@ -606,10 +647,11 @@ export function useLocalDb() {
           const oldOrderIds = (db.orders || []).map((o) => o.id);
           const oldEmpIds = (db.employees || []).map((e) => e.id);
           const oldMoldIds = (db.molds || []).map((m) => m.id);
+          const oldSchedDates = Object.keys(db.schedules || {});
           storage.set(DELETED_ORDERS_KEY, [...new Set([...(storage.get(DELETED_ORDERS_KEY) || []), ...oldOrderIds])]);
           storage.set(DELETED_EMPLOYEES_KEY, [...new Set([...(storage.get(DELETED_EMPLOYEES_KEY) || []), ...oldEmpIds])]);
           storage.set(DELETED_MOLDS_KEY, [...new Set([...(storage.get(DELETED_MOLDS_KEY) || []), ...oldMoldIds])]);
-          storage.remove(DELETED_SCHEDULES_KEY);
+          storage.set(DELETED_SCHEDULES_KEY, [...new Set([...(storage.get(DELETED_SCHEDULES_KEY) || []), ...oldSchedDates])]);
 
           // Clear legacy caches
           ["pe_local_db", "pe_local_db_v2", "pe_local_db_v3"].forEach((k) => storage.remove(k));
@@ -632,7 +674,8 @@ export function useLocalDb() {
             const res = await deleteAllFromSupabase("schedules");
             if (!res.ok) throw new Error("Lỗi xóa kế hoạch trên máy chủ: " + res.error);
           }
-          storage.remove(DELETED_SCHEDULES_KEY);
+          const oldSchedDates = Object.keys(db.schedules || {});
+          storage.set(DELETED_SCHEDULES_KEY, [...new Set([...(storage.get(DELETED_SCHEDULES_KEY) || []), ...oldSchedDates])]);
 
           const nextDb = { ...db, schedules: {} };
           storage.set(LOCAL_DB_KEY, nextDb);
@@ -743,6 +786,10 @@ export function useLocalDb() {
               const res = await bulkDeleteFromSupabase("schedules", targetDates);
               if (!res.ok) throw new Error("Lỗi xóa lịch trên máy chủ: " + res.error);
             }
+
+            const curDelSched = new Set(storage.get(DELETED_SCHEDULES_KEY) || []);
+            targetDates.forEach((d) => curDelSched.add(d));
+            storage.set(DELETED_SCHEDULES_KEY, Array.from(curDelSched));
 
             const targetSet = new Set(targetDates);
             const nextSchedules = {};

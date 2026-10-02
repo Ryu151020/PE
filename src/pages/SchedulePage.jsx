@@ -15,6 +15,8 @@ import { byId, computeKpis, copySchedule, createHistoryStack, emptyDay, sanitize
 import { deleteFromSupabase, isSupabaseConfigured, scheduleToDb, syncTableToSupabase } from "../lib/supabase";
 import { btnPrimary, btnSecondary, card } from "../lib/styles";
 import { t } from "../lib/i18n";
+import { DELETED_SCHEDULES_KEY } from "../sync/useLocalDb";
+import { storage } from "../sync/storage";
 
 export function SchedulePage() {
   const { db, setDb, role, user, pushToast, confirmAction, lang = "vi" } = useApp();
@@ -47,8 +49,11 @@ export function SchedulePage() {
   const kpis = useMemo(() => computeKpis(dayData, machines, employees), [dayData, machines, employees]);
 
   const applyChange = (updater) => {
-    const base = dayData || emptyDay(dateKey, machines);
-    const next = typeof updater === "function" ? updater(base) : updater;
+    if (!dayData) {
+      console.warn("Cannot apply changes: plan for this date does not exist. Please create or copy a plan first.");
+      return;
+    }
+    const next = typeof updater === "function" ? updater(dayData) : updater;
     const nowIso = new Date().toISOString();
     const saved = {
       ...withMachineStatus(next, machines),
@@ -139,6 +144,11 @@ export function SchedulePage() {
       `Bạn có chắc chắn muốn xóa toàn bộ kế hoạch ngày ${toDisplay(dateKey)} không? Kế hoạch sẽ được xóa hoàn toàn và trở về trạng thái trống ban đầu.\n\n/ 确定要清空该日期的全部排班计划吗？`,
       async () => {
         try {
+          // Ghi nhận vào persistent tombstone để các tab ngầm không thể đẩy ngược lên
+          const curDel = new Set(storage.get(DELETED_SCHEDULES_KEY) || []);
+          curDel.add(dateKey);
+          storage.set(DELETED_SCHEDULES_KEY, Array.from(curDel));
+
           if (isSupabaseConfigured) {
             await deleteFromSupabase("schedules", dateKey);
           }
@@ -188,6 +198,13 @@ export function SchedulePage() {
   }, [editable]);
 
   const handleStartNew = async () => {
+    // Gỡ dateKey khỏi tombstone xóa vì người dùng đã chủ động bấm tạo mới
+    const curDel = new Set(storage.get(DELETED_SCHEDULES_KEY) || []);
+    if (curDel.has(dateKey)) {
+      curDel.delete(dateKey);
+      storage.set(DELETED_SCHEDULES_KEY, Array.from(curDel));
+    }
+
     const nowIso = new Date().toISOString();
     const nowMs = Date.now();
     const fresh = emptyDay(dateKey, machines);
@@ -235,6 +252,14 @@ export function SchedulePage() {
   
   const applyCopiedData = async (copiedDay) => {
     if (!copiedDay) return;
+
+    // Gỡ dateKey khỏi tombstone xóa vì người dùng đã chủ động bấm áp dụng bản sao
+    const curDel = new Set(storage.get(DELETED_SCHEDULES_KEY) || []);
+    if (curDel.has(dateKey)) {
+      curDel.delete(dateKey);
+      storage.set(DELETED_SCHEDULES_KEY, Array.from(curDel));
+    }
+
     const nowIso = new Date().toISOString();
     const nowMs = Date.now();
     const stampedEntries = {};
@@ -276,8 +301,8 @@ export function SchedulePage() {
       lang === "zh"
         ? "已应用排班数据并自动保存"
         : lang === "en"
-        ? "Data applied and auto-saved"
-        : "Đã áp dụng và tự động lưu kế hoạch",
+        ? "Schedule data applied and auto-saved"
+        : "Đã áp dụng kế hoạch và tự động lưu",
       "success"
     );
   };
