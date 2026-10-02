@@ -27,7 +27,7 @@ export function DataPage() {
   return (
     <div className="space-y-5">
       <PageHeader vi="Dữ liệu" zh="数据管理" />
-      <div className="grid gap-5 grid-cols-1 lg:grid-cols-2 items-stretch">
+      <div className={`grid gap-5 items-stretch ${role === "ADMIN" ? "grid-cols-1 lg:grid-cols-2" : "grid-cols-1 max-w-2xl"}`}>
         {/* Card bên trái: Xuất dữ liệu ra Excel */}
         <div className={`${card} v-rise v-hover-lift p-6 flex flex-col justify-between h-full`} style={{ "--i": 1 }}>
           <div>
@@ -58,8 +58,10 @@ export function DataPage() {
           </div>
         </div>
 
-        {/* Card bên phải: Xóa dữ liệu */}
-        <DeleteDataCard db={db} setDb={setDb} deleteData={deleteData} role={role} pushToast={pushToast} confirmAction={confirmAction} scheduleDates={scheduleDates} />
+        {/* Card bên phải: Xóa dữ liệu - Chỉ dành riêng cho quyền Admin */}
+        {role === "ADMIN" && (
+          <DeleteDataCard db={db} setDb={setDb} deleteData={deleteData} role={role} pushToast={pushToast} confirmAction={confirmAction} scheduleDates={scheduleDates} />
+        )}
       </div>
     </div>
   );

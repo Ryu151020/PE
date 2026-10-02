@@ -16,6 +16,7 @@ export const DICT = {
   nav_employees: { vi: "Nhân sự", zh: "人员管理", en: "Personnel" },
   nav_reports: { vi: "Báo cáo tổng hợp", zh: "综合报表", en: "Reports" },
   nav_data: { vi: "Dữ liệu", zh: "数据管理", en: "Data Management" },
+  nav_accounts: { vi: "Tài khoản", zh: "账户管理", en: "Accounts" },
 
   // General Header & Layout
   greeting: { vi: "Xin chào", zh: "你好", en: "Welcome" },
@@ -30,6 +31,7 @@ export const DICT = {
 
   // Table Column Headers
   stt: { vi: "STT", zh: "序号", en: "No." },
+  machineNumberCol: { vi: "Số máy", zh: "机台号", en: "Machine No." },
   machineStatus: { vi: "Trạng thái máy", zh: "机器状态", en: "Machine Status" },
   mold: { vi: "Khuôn máy", zh: "模具", en: "Mold" },
   order: { vi: "Đơn hàng", zh: "订单", en: "Order" },

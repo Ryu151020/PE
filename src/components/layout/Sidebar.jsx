@@ -6,7 +6,7 @@ import { NAV_ITEMS } from "../../lib/nav";
 import { LOGO_FONT, btnSecondary } from "../../lib/styles";
 
 export function Sidebar({ page, setPage, collapsed, setCollapsed }) {
-  const { lang = "vi" } = useApp() || {};
+  const { lang = "vi", role } = useApp() || {};
   const itemRefs = useRef({});
   const [ind, setInd] = useState(null);
   const [hov, setHov] = useState({ top: 0, height: 0, on: false, snap: true });
@@ -52,7 +52,7 @@ export function Sidebar({ page, setPage, collapsed, setCollapsed }) {
         <nav className="v-nav" onMouseLeave={hoverOff}>
           {ind && <span className="v-nav-indicator" style={{ transform: `translateY(${ind.top}px)`, height: ind.height }} />}
           <span className={`v-nav-hover ${hov.on ? "is-on" : ""}`} style={{ transform: `translateY(${hov.top}px)`, height: hov.height, transition: hov.snap ? "opacity 150ms" : undefined }} />
-          {NAV_ITEMS.map((item) => {
+          {NAV_ITEMS.filter((item) => !item.adminOnly || role === "ADMIN").map((item) => {
             const { key, icon: Icon } = item;
             const itemLabel = item[lang] || item.vi;
             return (

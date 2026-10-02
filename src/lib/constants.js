@@ -123,7 +123,7 @@ export const PLAN_STATUS_COLOR = {
   LOCKED: "bg-brand-tint text-brand",
 };
 
-export const ROLES = { ADMIN: "ADMIN", MANAGER: "MANAGER", VIEWER: "VIEWER" };
+export const ROLES = { ADMIN: "ADMIN", USER: "USER", VIEWER: "VIEWER" };
 
 export const OT_OPTIONS = [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4];
 

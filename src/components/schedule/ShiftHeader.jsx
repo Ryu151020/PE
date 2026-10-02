@@ -320,13 +320,13 @@ export function ShiftHeader({ dayData, employees, employeesById, editable, onCha
   const { lang = "vi" } = useApp() || {};
   const shiftLeaders = employees.filter((e) => e.position === POSITIONS.SHIFT_LEADER);
   const teamLeaders = employees.filter((e) => e.position === POSITIONS.TEAM_LEADER);
-  const L0 = 0, L1 = 56, L2 = 176, W0 = 56, W1 = 120, W2 = 140; // sticky left offsets: STT | Trạng thái | Khuôn
+  const L0 = 0, L1 = 70, L2 = 190, W0 = 70, W1 = 120, W2 = 140; // sticky left offsets: Số máy | Trạng thái | Khuôn
 
   return (
     <thead className="sticky top-0 z-20">
       <tr className="text-xs">
-        <th rowSpan={3} className="z-30 pe-th border-b border-r border-line px-3 py-3 font-bold text-black" style={{ position: "sticky", left: L0, width: W0, minWidth: W0, maxWidth: W0 }}>
-          <Bi vi="STT" zh="序号" en="No." center viClass="font-bold text-black text-sm" zhClass="font-bold text-black text-sm" enClass="font-bold text-black text-sm" />
+        <th rowSpan={3} className="z-30 pe-th border-b border-r border-line px-2 py-3 font-bold text-center align-middle text-black" style={{ position: "sticky", left: L0, width: W0, minWidth: W0, maxWidth: W0 }}>
+          <Bi vi="Số máy" zh="机台号" en="Machine No." center viClass="font-bold text-black text-sm" zhClass="font-bold text-black text-sm" enClass="font-bold text-black text-sm" />
         </th>
         <th rowSpan={3} className="z-30 pe-th border-b border-r border-line px-3 py-3 font-bold text-center align-middle text-black" style={{ position: "sticky", left: L1, width: W1, minWidth: W1, maxWidth: W1 }}>
           <Bi vi="Trạng thái máy" zh="机器状态" en="Machine Status" center viClass="font-bold text-black text-sm" zhClass="font-bold text-black text-sm" enClass="font-bold text-black text-sm" />

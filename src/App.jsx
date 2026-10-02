@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "./auth/AuthContext";
 import { AppCtx } from "./context/AppContext";
@@ -8,6 +8,7 @@ import { Sidebar } from "./components/layout/Sidebar";
 import { ChipHoverPopover } from "./components/schedule/EmployeeChip";
 import { ConfirmDialog } from "./components/ui/ConfirmDialog";
 import { ToastHost } from "./components/ui/Overlays";
+import { AccountsPage } from "./pages/AccountsPage";
 import { DataPage } from "./pages/DataPage";
 import { EmployeesPage } from "./pages/EmployeesPage";
 import { MachinesPage } from "./pages/MachinesPage";
@@ -20,6 +21,13 @@ export default function App() {
   const { user, logout } = useAuth();
   const userProfile = typeof user === "object" && user ? user : { username: user || "Admin", role: ROLES.ADMIN };
   const [role, setRole] = useState(() => userProfile.role || ROLES.ADMIN);
+
+  useEffect(() => {
+    if (userProfile?.role) {
+      setRole(userProfile.role);
+    }
+  }, [userProfile?.role]);
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [toasts, setToasts] = useState([]);
   const [confirmState, setConfirmState] = useState(null);
@@ -83,6 +91,10 @@ export default function App() {
                   <Route path="/employees" element={<EmployeesPage />} />
                   <Route path="/reports" element={<ReportsPage />} />
                   <Route path="/data" element={<DataPage />} />
+                  <Route
+                    path="/accounts"
+                    element={role === ROLES.ADMIN ? <AccountsPage /> : <Navigate to="/" replace />}
+                  />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </div>

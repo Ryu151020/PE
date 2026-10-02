@@ -158,7 +158,7 @@ function MachineStatusCell({ machineStatus, onChange, lang, disabled }) {
 
 export function ScheduleRow({ machine, entry, molds, orders, ordersById, editable, activeWorkers, techniciansPool, supportPool, onPatchEntry, selection, onSelectCell, onCellMouseDown, onCellEnter, onDropEmployee, employeesById, dayCollapsed, nightCollapsed, rowHeight }) {
   const { lang = "vi" } = useApp() || {};
-  const L0 = 0, L1 = 56, L2 = 176, W0 = 56, W1 = 120, W2 = 140;
+  const L0 = 0, L1 = 70, L2 = 190, W0 = 70, W1 = 120, W2 = 140;
   const selInfo = (colKey) => {
     if (!selection || !selection.colKeys.includes(colKey) || !selection.machineIds.includes(machine.id)) return null;
     const ci = selection.colKeys.indexOf(colKey), ri = selection.machineIds.indexOf(machine.id);

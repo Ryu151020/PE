@@ -344,3 +344,89 @@ export async function authenticateSupabaseUser(username, password) {
     return { ok: false, error: err.message || "Lỗi xác thực người dùng" };
   }
 }
+
+export async function fetchUsersFromSupabase() {
+  if (!supabase) return { ok: false, error: "Supabase not configured", users: [] };
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("id, username, password, name, role, created_at")
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return { ok: true, users: data || [] };
+  } catch (err) {
+    console.error("fetchUsersFromSupabase error:", err);
+    return { ok: false, error: err.message, users: [] };
+  }
+}
+
+export async function createUserInSupabase({ username, password, name, role }) {
+  if (!supabase) return { ok: false, error: "Supabase not configured" };
+  try {
+    const u = String(username || "").trim();
+    const p = String(password || "").trim();
+    const n = String(name || "").trim() || u;
+    const r = role === "ADMIN" ? "ADMIN" : "USER";
+    if (!u || !p) return { ok: false, error: "Tên đăng nhập và mật khẩu không được để trống" };
+
+    // Check if username already exists
+    const { data: existing } = await supabase
+      .from("users")
+      .select("id")
+      .ilike("username", u)
+      .maybeSingle();
+
+    if (existing) {
+      return { ok: false, error: "Tên tài khoản này đã tồn tại / 该用户名已存在" };
+    }
+
+    const id = `USER-${Date.now().toString(36).toUpperCase()}`;
+    const { data, error } = await supabase
+      .from("users")
+      .insert([{ id, username: u, password: p, name: n, role: r }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { ok: true, user: data };
+  } catch (err) {
+    console.error("createUserInSupabase error:", err);
+    return { ok: false, error: err.message };
+  }
+}
+
+export async function updateUserInSupabase(id, updates) {
+  if (!supabase) return { ok: false, error: "Supabase not configured" };
+  try {
+    const patch = {};
+    if (updates.name !== undefined) patch.name = updates.name.trim();
+    if (updates.role !== undefined) patch.role = updates.role === "ADMIN" ? "ADMIN" : "USER";
+    if (updates.password) patch.password = String(updates.password).trim();
+
+    const { data, error } = await supabase
+      .from("users")
+      .update(patch)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { ok: true, user: data };
+  } catch (err) {
+    console.error("updateUserInSupabase error:", err);
+    return { ok: false, error: err.message };
+  }
+}
+
+export async function deleteUserFromSupabase(id) {
+  if (!supabase) return { ok: false, error: "Supabase not configured" };
+  try {
+    const { error } = await supabase.from("users").delete().eq("id", id);
+    if (error) throw error;
+    return { ok: true };
+  } catch (err) {
+    console.error("deleteUserFromSupabase error:", err);
+    return { ok: false, error: err.message };
+  }
+}
+
