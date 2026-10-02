@@ -352,35 +352,36 @@ export function EmployeesPage() {
         />
       </div>
 
-      {/* Action Toolbar */}
-      <div className="flex items-center justify-between gap-3 flex-wrap pt-1">
-        <Segmented
-          value={tab}
-          onChange={setTab}
-          items={[
-            { key: "active", label: `${t("activeEmployees", lang)} (${activeCount})` },
-            { key: "resigned", label: `${t("resignedEmployees", lang)} (${employees.length - activeCount})` },
-          ]}
-        />
-        <div className="flex items-center gap-2.5 ml-auto">
-          <UndoRedoButtons canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
-          <AddActionButton
-            labelVi="Thêm nhân sự"
-            labelZh="新增员工"
-            labelEn="Add Employee"
-            onManualAdd={() => setForm({})}
-            onExcelAdd={() => setExcelOpen(true)}
+      {/* Enclosed Card Container for Toolbar and Table */}
+      <div className={`${card} overflow-hidden bg-white shadow-xs`}>
+        {/* Action Toolbar */}
+        <div className="p-5 pb-4 border-b border-line/60 flex items-center justify-between gap-3 flex-wrap bg-white">
+          <Segmented
+            value={tab}
+            onChange={setTab}
+            items={[
+              { key: "active", label: `${t("activeEmployees", lang)} (${activeCount})` },
+              { key: "resigned", label: `${t("resignedEmployees", lang)} (${employees.length - activeCount})` },
+            ]}
           />
+          <div className="flex items-center gap-2.5 ml-auto">
+            <UndoRedoButtons canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
+            <AddActionButton
+              labelVi="Thêm nhân sự"
+              labelZh="新增员工"
+              labelEn="Add Employee"
+              onManualAdd={() => setForm({})}
+              onExcelAdd={() => setExcelOpen(true)}
+            />
+          </div>
         </div>
-      </div>
 
-      <div className={`${card} overflow-hidden`}>
         <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-315px)]">
           <table ref={tableRef} className="w-full text-sm border-separate border-spacing-0">
-            <thead className="pe-thead text-sm sticky top-0 z-10 bg-[#F8FAFC] shadow-xs">
-              <tr className="h-10">
+            <thead className="pe-thead text-sm sticky top-0 z-10 bg-[#F4F7FE] shadow-xs">
+              <tr className="h-11">
                 <th
-                  className="px-3 py-2 text-center align-middle font-bold text-black text-sm whitespace-nowrap bg-[#F8FAFC] border-l border-b border-r border-line z-30"
+                  className="px-3 py-2.5 text-center align-middle font-bold text-[#1B2559] text-sm whitespace-nowrap bg-[#F4F7FE] border-l border-b border-r border-line z-30"
                   style={{ position: "sticky", left: 0, top: 0, width: 50, minWidth: 50, maxWidth: 50 }}
                 >
                   STT
@@ -523,7 +524,7 @@ export function EmployeesPage() {
                   data={tabEmployees}
                   className="min-w-[170px]"
                 />
-                <th className="px-3 py-2 text-center align-middle font-bold text-black text-sm whitespace-nowrap min-w-[100px] bg-[#F8FAFC] border-b border-r border-line">
+                <th className="px-3 py-2.5 text-center align-middle font-bold text-[#1B2559] text-sm whitespace-nowrap min-w-[100px] bg-[#F4F7FE] border-b border-r border-line">
                   {t("actions", lang)}
                 </th>
               </tr>

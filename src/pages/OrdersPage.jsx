@@ -210,39 +210,6 @@ export function OrdersPage() {
     );
   };
 
-  const handleDeleteAllOrders = () => {
-    confirmAction(
-      `⚠️ CẢNH BÁO NGUY HIỂM: Bạn có chắc chắn muốn XÓA TOÀN BỘ ${orders.length} đơn hàng trong hệ thống không? Toàn bộ danh sách đơn hàng sẽ bị xóa vĩnh viễn trên Cloud và máy tính!\n\n/ 警告：确定要清空全部 ${orders.length} 个订单吗？此操作无法撤销！`,
-      async () => {
-        try {
-          // 1. Lưu tất cả order ID vào tombstone
-          const delIds = new Set(storage.get("pe_deleted_order_ids") || []);
-          orders.forEach((o) => delIds.add(o.id));
-          storage.set("pe_deleted_order_ids", Array.from(delIds));
-
-          // 2. Xóa toàn bộ qua deleteData
-          if (deleteData) {
-            await deleteData({ mode: "orders" });
-          } else {
-            if (isSupabaseConfigured) {
-              await deleteAllFromSupabase("orders");
-            }
-            setDb((p) => ({ ...p, orders: [] }));
-          }
-          setOrdersWithHistory([]);
-          pushToast(lang === "zh" ? "已彻底清空全部订单！" : lang === "en" ? "All orders deleted permanently!" : "Đã xóa toàn bộ đơn hàng vĩnh viễn!", "success");
-        } catch (err) {
-          console.error("Delete all orders failed:", err);
-          pushToast("Lỗi xóa đơn hàng: " + err.message, "error");
-        }
-      },
-      {
-        title: lang === "zh" ? "确认清空全部订单" : lang === "en" ? "Confirm Delete All Orders" : "Xác nhận xóa toàn bộ đơn hàng",
-        danger: true,
-        confirmLabel: lang === "zh" ? "清空全部" : lang === "en" ? "Delete All" : "Xóa toàn bộ",
-      }
-    );
-  };
 
   const handleExcelImport = async (newOrders) => {
     if (!newOrders || newOrders.length === 0) return;
@@ -377,40 +344,30 @@ export function OrdersPage() {
         />
       </div>
 
-      {/* Action Toolbar */}
-      <div className="flex items-center justify-between gap-3 flex-wrap pt-1">
-        <Segmented
-          value={tab}
-          onChange={setTab}
-          items={[
-            { key: "open", label: `${lang === "zh" ? "生产中" : lang === "en" ? "In Production" : "Đang sản xuất"} (${openOrdersCount})` },
-            { key: "done", label: `${lang === "zh" ? "已完成" : lang === "en" ? "Completed" : "Đã hoàn thiện"} (${doneOrdersCount})` },
-          ]}
-        />
-        <div className="flex items-center gap-2.5 ml-auto">
-          {orders.length > 0 && (
-            <button
-              type="button"
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl text-bad bg-bad-tint hover:bg-bad hover:text-white transition-colors border border-bad/20"
-              onClick={handleDeleteAllOrders}
-              title={lang === "zh" ? "清空全部订单" : lang === "en" ? "Delete All Orders" : "Xóa tất cả đơn hàng"}
-            >
-              <Trash2 size={13} />
-              <span>{lang === "zh" ? "清空全部订单" : lang === "en" ? "Delete All Orders" : "Xóa tất cả đơn hàng"}</span>
-            </button>
-          )}
-          <UndoRedoButtons canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
-          <AddActionButton
-            labelVi="Thêm đơn hàng"
-            labelZh="新增订单"
-            labelEn="Add Order"
-            onManualAdd={() => setAddOpen(true)}
-            onExcelAdd={() => setExcelOpen(true)}
+      {/* Enclosed Card Container for Toolbar and Table */}
+      <div className={`${card} overflow-hidden bg-white shadow-xs`}>
+        {/* Action Toolbar */}
+        <div className="p-5 pb-4 border-b border-line/60 flex items-center justify-between gap-3 flex-wrap bg-white">
+          <Segmented
+            value={tab}
+            onChange={setTab}
+            items={[
+              { key: "open", label: `${lang === "zh" ? "生产中" : lang === "en" ? "In Production" : "Đang sản xuất"} (${openOrdersCount})` },
+              { key: "done", label: `${lang === "zh" ? "已完成" : lang === "en" ? "Completed" : "Đã hoàn thiện"} (${doneOrdersCount})` },
+            ]}
           />
+          <div className="flex items-center gap-2.5 ml-auto">
+            <UndoRedoButtons canUndo={canUndo} canRedo={canRedo} onUndo={undo} onRedo={redo} />
+            <AddActionButton
+              labelVi="Thêm đơn hàng"
+              labelZh="新增订单"
+              labelEn="Add Order"
+              onManualAdd={() => setAddOpen(true)}
+              onExcelAdd={() => setExcelOpen(true)}
+            />
+          </div>
         </div>
-      </div>
 
-      <div className={`${card} overflow-hidden bg-white`}>
         <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-315px)]">
           <table ref={tableRef} className="w-full min-w-[1080px] table-fixed text-sm border-separate border-spacing-0">
             <colgroup>
@@ -422,9 +379,9 @@ export function OrdersPage() {
               <col className="w-[20%]" />
               <col className="w-[12%]" />
             </colgroup>
-            <thead className="pe-thead text-sm sticky top-0 z-10 bg-[#F8FAFC] shadow-xs">
-              <tr className="h-10">
-                <th className="px-3 py-2 text-center align-middle font-bold text-black text-sm whitespace-nowrap bg-[#F8FAFC] border-l border-b border-r border-line">
+            <thead className="pe-thead text-sm sticky top-0 z-10 bg-[#F4F7FE] shadow-xs">
+              <tr className="h-11">
+                <th className="px-3 py-2.5 text-center align-middle font-bold text-[#1B2559] text-sm whitespace-nowrap bg-[#F4F7FE] border-l border-b border-r border-line">
                   {t("stt", lang)}
                 </th>
                 <SortableTh
@@ -476,10 +433,10 @@ export function OrdersPage() {
                   data={tabOrders}
                   center={true}
                 />
-                <th className="px-3 py-2 text-center align-middle font-bold text-black text-sm whitespace-nowrap bg-[#F8FAFC] border-b border-r border-line">
+                <th className="px-3 py-2.5 text-center align-middle font-bold text-[#1B2559] text-sm whitespace-nowrap bg-[#F4F7FE] border-b border-r border-line">
                   {t("status", lang)}
                 </th>
-                <th className="px-3 py-2 text-center align-middle font-bold text-black text-sm whitespace-nowrap bg-[#F8FAFC] border-b border-r border-line">
+                <th className="px-3 py-2.5 text-center align-middle font-bold text-[#1B2559] text-sm whitespace-nowrap bg-[#F4F7FE] border-b border-r border-line">
                   {t("actions", lang)}
                 </th>
               </tr>

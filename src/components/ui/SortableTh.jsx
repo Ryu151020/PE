@@ -173,8 +173,8 @@ export function SortableTh({
   return (
     <th
       ref={thRef}
-      className={`px-3 py-2 ${center ? "text-center" : "text-left"} align-middle font-bold text-black text-sm select-none whitespace-nowrap transition-colors bg-[#F8FAFC] border-b border-r border-line ${
-        isOpen ? "!bg-[#e8f0fe]" : "hover:bg-[#edf2f7]"
+      className={`px-3 py-2.5 ${center ? "text-center" : "text-left"} align-middle font-bold text-[#1B2559] text-sm select-none whitespace-nowrap transition-colors bg-[#F4F7FE] border-b border-r border-line ${
+        isOpen ? "!bg-[#E8EDFB]" : "hover:bg-[#EAEFFC]"
       } ${className}`}
       style={style}
     >
@@ -184,7 +184,17 @@ export function SortableTh({
           onClick={handleOpen}
           title={lang === "zh" ? "点击以筛选或排序此列" : lang === "en" ? "Click to filter or sort" : "Bấm để lọc hoặc sắp xếp cột này"}
         >
-          <span className="whitespace-nowrap">{displayLabel}</span>
+          <span
+            className={`whitespace-nowrap transition-colors ${
+              isSorted
+                ? "text-brand font-extrabold"
+                : isFiltered
+                ? "text-emerald-700 font-extrabold"
+                : "text-[#1B2559] font-bold"
+            }`}
+          >
+            {displayLabel}
+          </span>
         </div>
 
         <button
@@ -194,28 +204,28 @@ export function SortableTh({
             if (isOpen) setIsOpen(false);
             else handleOpen();
           }}
-          className={`flex items-center justify-center w-6 h-6 rounded hover:bg-black/5 transition-all cursor-pointer ${
+          className={`flex items-center justify-center w-5 h-5 rounded-full transition-all cursor-pointer ${
             isFiltered
-              ? "bg-[#137333] text-white hover:bg-[#0f5b28]"
+              ? "bg-emerald-100 text-emerald-700 border border-emerald-300 shadow-xs"
               : isSorted
-              ? "bg-[#1a73e8] text-white hover:bg-[#1557b0]"
-              : "text-[#5f6368] hover:text-[#202124]"
+              ? "bg-[#EFEBFF] text-brand border border-brand/30 shadow-xs"
+              : "text-[#A3AED0] hover:text-brand hover:bg-[#EFEBFF]/50"
           }`}
           title={lang === "zh" ? "排序和筛选选项" : lang === "en" ? "Sort and filter options" : "Tùy chọn sắp xếp & bộ lọc"}
         >
           {sortDirection === "asc" ? (
-            <ArrowUp size={13} strokeWidth={2.5} />
+            <ArrowUp size={12} strokeWidth={2.5} />
           ) : sortDirection === "desc" ? (
-            <ArrowDown size={13} strokeWidth={2.5} />
+            <ArrowDown size={12} strokeWidth={2.5} />
           ) : isFiltered ? (
-            <Filter size={12} strokeWidth={2.5} />
+            <Filter size={11} strokeWidth={2.5} />
           ) : (
-            <span className="text-[10px] leading-none opacity-70">▼</span>
+            <span className="text-[9px] leading-none opacity-75">▼</span>
           )}
         </button>
       </div>
 
-      {/* Excel / Google Sheets Popup Menu */}
+      {/* Venus Style Popup Menu */}
       {isOpen &&
         createPortal(
           <div
@@ -226,57 +236,57 @@ export function SortableTh({
               left: coords.left,
               zIndex: 99999,
             }}
-            className="w-[275px] bg-white rounded-md shadow-2xl border border-[#dadce0] text-xs font-sans text-[#202124] animate-in fade-in duration-100"
+            className="w-[280px] bg-white rounded-2xl shadow-xl border border-line text-xs font-sans text-main p-2 animate-in fade-in duration-100"
           >
             {/* Sort Options */}
-            <div className="py-1">
+            <div className="space-y-1">
               <button
                 type="button"
                 onClick={handleSortAsc}
-                className={`w-full px-4 py-2 text-left flex items-center justify-between text-[13px] hover:bg-[#f1f3f4] cursor-pointer transition-colors ${
-                  sortDirection === "asc" ? "bg-[#e8f0fe] text-[#1a73e8] font-bold" : "text-[#3c4043]"
+                className={`w-full px-3 py-2 rounded-xl text-left flex items-center justify-between text-[13px] hover:bg-canvas cursor-pointer transition-colors ${
+                  sortDirection === "asc" ? "bg-[#EFEBFF] text-brand font-bold" : "text-sub"
                 }`}
               >
                 <span>{t("sortAsc", lang)}</span>
-                {sortDirection === "asc" && <Check size={14} className="text-[#1a73e8]" />}
+                {sortDirection === "asc" && <Check size={14} className="text-brand" />}
               </button>
 
               <button
                 type="button"
                 onClick={handleSortDesc}
-                className={`w-full px-4 py-2 text-left flex items-center justify-between text-[13px] hover:bg-[#f1f3f4] cursor-pointer transition-colors ${
-                  sortDirection === "desc" ? "bg-[#e8f0fe] text-[#1a73e8] font-bold" : "text-[#3c4043]"
+                className={`w-full px-3 py-2 rounded-xl text-left flex items-center justify-between text-[13px] hover:bg-canvas cursor-pointer transition-colors ${
+                  sortDirection === "desc" ? "bg-[#EFEBFF] text-brand font-bold" : "text-sub"
                 }`}
               >
                 <span>{t("sortDesc", lang)}</span>
-                {sortDirection === "desc" && <Check size={14} className="text-[#1a73e8]" />}
+                {sortDirection === "desc" && <Check size={14} className="text-brand" />}
               </button>
             </div>
 
-            <div className="h-[1px] bg-[#dadce0] my-1" />
+            <div className="h-[1px] bg-line/60 my-2" />
 
             {/* Filter by Value Section */}
-            <div className="pt-1">
-              <div className="px-4 py-1 flex items-center gap-1 text-[13px] font-medium text-[#202124]">
-                <span className="text-[10px] text-[#5f6368]">▼</span>
+            <div>
+              <div className="px-2 py-1 flex items-center gap-1.5 text-xs font-bold text-main">
+                <Filter size={12} className="text-brand" />
                 <span>{lang === "zh" ? "按值筛选" : lang === "en" ? "Filter by value" : "Lọc theo giá trị"}</span>
               </div>
 
               {/* Action Links */}
-              <div className="px-4 pt-1.5 pb-1 flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1">
+              <div className="px-2 pt-1 pb-1 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={handleSelectAllVisible}
-                    className="text-[#1a73e8] hover:underline cursor-pointer font-medium"
+                    className="text-brand hover:underline cursor-pointer font-bold"
                   >
                     {t("selectAll", lang)} ({allUniqueValues.length})
                   </button>
-                  <span className="text-[#dadce0]">-</span>
+                  <span className="text-line">•</span>
                   <button
                     type="button"
                     onClick={handleClearAll}
-                    className="text-[#1a73e8] hover:underline cursor-pointer font-medium"
+                    className="text-brand hover:underline cursor-pointer font-bold"
                   >
                     {t("clearFilter", lang)}
                   </button>
@@ -284,22 +294,22 @@ export function SortableTh({
               </div>
 
               {/* Search Box */}
-              <div className="mx-3 my-1.5 relative">
+              <div className="my-1.5 relative px-1">
                 <input
                   type="text"
                   value={searchVal}
                   onChange={(e) => setSearchVal(e.target.value)}
                   placeholder={t("search", lang)}
                   autoFocus
-                  className="w-full border border-[#dadce0] rounded py-1 pl-2.5 pr-7 text-xs text-[#202124] focus:outline-none focus:border-[#137333] h-7"
+                  className="w-full border border-line rounded-xl py-1.5 pl-3 pr-8 text-xs text-main bg-[#F8FAFC] focus:bg-white focus:outline-none focus:border-brand transition-colors h-8"
                 />
-                <Search size={14} className="absolute right-2 top-1.5 text-[#5f6368] pointer-events-none" />
+                <Search size={14} className="absolute right-3.5 top-2.5 text-[#A3AED0] pointer-events-none" />
               </div>
 
               {/* Checkbox List */}
-              <div className="mx-2 max-h-40 overflow-y-auto pr-1 space-y-0.5">
+              <div className="px-1 max-h-40 overflow-y-auto space-y-0.5">
                 {visibleList.length === 0 ? (
-                  <div className="px-3 py-2 text-center text-xs text-mute">
+                  <div className="px-3 py-3 text-center text-xs text-mute">
                     {t("notFound", lang)}
                   </div>
                 ) : (
@@ -308,13 +318,13 @@ export function SortableTh({
                     return (
                       <label
                         key={val}
-                        className="flex items-center gap-2 px-2 py-1 rounded hover:bg-[#f1f3f4] cursor-pointer text-xs text-[#3c4043]"
+                        className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg hover:bg-canvas cursor-pointer text-xs text-main transition-colors"
                       >
                         <input
                           type="checkbox"
                           checked={checked}
                           onChange={() => handleToggleValue(val)}
-                          className="w-3.5 h-3.5 rounded text-[#137333] accent-[#137333] cursor-pointer"
+                          className="w-4 h-4 rounded text-brand accent-[#4318FF] cursor-pointer"
                         />
                         <span className={`truncate ${val === t("emptySpot", lang) ? "italic text-mute" : ""}`}>
                           {val}
@@ -327,20 +337,20 @@ export function SortableTh({
             </div>
 
             {/* Bottom Actions */}
-            <div className="px-4 py-2.5 border-t border-[#dadce0] mt-2 flex items-center justify-end gap-2 bg-[#f8f9fa] rounded-b-md">
+            <div className="px-2 pt-2.5 pb-1 border-t border-line/60 mt-2 flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="px-3.5 py-1 text-xs font-semibold rounded border border-[#dadce0] text-[#137333] bg-white hover:bg-gray-50 cursor-pointer h-7 transition-colors"
+                className="px-3 py-1.5 text-xs font-semibold rounded-xl border border-line text-sub bg-white hover:bg-canvas cursor-pointer transition-colors"
               >
                 {t("cancel", lang)}
               </button>
               <button
                 type="button"
                 onClick={handleApply}
-                className="px-4 py-1 text-xs font-bold rounded bg-[#137333] hover:bg-[#0f5b28] text-white cursor-pointer h-7 shadow-xs transition-colors"
+                className="px-4 py-1.5 text-xs font-bold rounded-xl bg-brand hover:bg-brand-dark text-white cursor-pointer shadow-xs transition-colors"
               >
-                OK
+                Áp dụng / 应用
               </button>
             </div>
           </div>,
