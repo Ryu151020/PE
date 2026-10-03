@@ -213,7 +213,10 @@ export function getCellValue(entry, colKey) {
 }
 
 export function applyCellValue(entry, colKey, value, dateKey, employeesById, claimed, ordersById) {
-  const filterIds = (ids) => { const kept = [], skipped = []; (ids || []).forEach((id) => { const e = employeesById[id]; if (!e || !isSchedulableOn(e, dateKey)) { skipped.push({ id, reason: "đã nghỉ việc" }); return; } kept.push(id); }); return { kept, skipped }; };
+  const filterIds = (ids) => {
+    const kept = (ids || []).filter(Boolean);
+    return { kept, skipped: [] };
+  };
   switch (colKey) {
     case "machineStatus": return { entry: { ...entry, machineStatus: value || null }, skipped: [] };
     case "mold": return { entry: { ...entry, moldId: value || null }, skipped: [] };

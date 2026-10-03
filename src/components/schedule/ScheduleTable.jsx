@@ -9,8 +9,51 @@ import { card } from "../../lib/styles";
 export function ScheduleTable({ machines, molds, orders, ordersById, entries, editable, dateKey, activeWorkers, techniciansPool, supportPool, employeesById, onPatchEntry, onBulkUpdate, dayData, employees, onChangeLeaders }) {
   const { pushToast } = useApp();
   const [selection, setSelection] = useState(null); // { anchor, focus, colKeys[], machineIds[] } rectangle
-  const [dayCollapsed, setDayCollapsed] = useState(false);
-  const [nightCollapsed, setNightCollapsed] = useState(false);
+
+  // Per-date shift collapse state: each date has its own independent day and night collapse toggles
+  const [collapsedByDate, setCollapsedByDate] = useState(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem("pe_collapsed_shifts") || "{}");
+    } catch {
+      return {};
+    }
+  });
+
+  const dayCollapsed = Boolean(collapsedByDate[dateKey]?.day);
+  const nightCollapsed = Boolean(collapsedByDate[dateKey]?.night);
+
+  const toggleDay = useCallback(() => {
+    setCollapsedByDate((prev) => {
+      const next = {
+        ...prev,
+        [dateKey]: {
+          ...(prev[dateKey] || {}),
+          day: !prev[dateKey]?.day,
+        },
+      };
+      try {
+        sessionStorage.setItem("pe_collapsed_shifts", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, [dateKey]);
+
+  const toggleNight = useCallback(() => {
+    setCollapsedByDate((prev) => {
+      const next = {
+        ...prev,
+        [dateKey]: {
+          ...(prev[dateKey] || {}),
+          night: !prev[dateKey]?.night,
+        },
+      };
+      try {
+        sessionStorage.setItem("pe_collapsed_shifts", JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, [dateKey]);
+
   const clipboardRef = useRef(null);
   const machineIndex = useMemo(() => Object.fromEntries(machines.map((m, i) => [m.id, i])), [machines]);
 
@@ -256,7 +299,7 @@ export function ScheduleTable({ machines, molds, orders, ordersById, entries, ed
       <div style={{ overflowX: "auto", overflowY: "hidden" }}>
         <table ref={tableRef} className="w-full text-sm" style={{ borderCollapse: "separate", borderSpacing: 0, userSelect: dragging ? "none" : undefined }}>
           <ShiftHeader dayData={dayData} employees={employees} employeesById={employeesById} editable={editable} onChangeLeaders={onChangeLeaders}
-            dayCollapsed={dayCollapsed} nightCollapsed={nightCollapsed} onToggleDay={() => setDayCollapsed((v) => !v)} onToggleNight={() => setNightCollapsed((v) => !v)} />
+            dayCollapsed={dayCollapsed} nightCollapsed={nightCollapsed} onToggleDay={toggleDay} onToggleNight={toggleNight} />
           <tbody ref={tbodyRef}>
             {machines.map((machine) => (
               <ScheduleRow key={machine.id} machine={machine} entry={entries[machine.id]} molds={molds} orders={orders} ordersById={ordersById} editable={editable} activeWorkers={activeWorkers} techniciansPool={techniciansPool} supportPool={supportPool} employeesById={employeesById}

@@ -28,6 +28,9 @@ export function AuthProvider({ children }) {
 
     const res = await authenticateSupabaseUser(u, p);
     if (res.ok && res.user) {
+      try {
+        sessionStorage.removeItem("pe_active_schedule_date");
+      } catch {}
       storage.set(AUTH_KEY, { user: res.user, at: Date.now() });
       setUser(res.user);
       return { ok: true, user: res.user };
@@ -37,6 +40,9 @@ export function AuthProvider({ children }) {
   }, []);
 
   const logout = useCallback(() => {
+    try {
+      sessionStorage.removeItem("pe_active_schedule_date");
+    } catch {}
     storage.remove(AUTH_KEY);
     setUser(null);
   }, []);

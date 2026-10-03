@@ -15,7 +15,7 @@ import { PageHeader } from "../components/ui/PageHeader";
 import { Segmented } from "../components/ui/Segmented";
 import { SortableTh } from "../components/ui/SortableTh";
 import { useApp } from "../context/AppContext";
-import { EMP_STATUS, EMP_STATUS_COLOR, EMP_STATUS_DEFS, POSITION_LIST, POSITION_ZH, isActive } from "../lib/constants";
+import { EMP_STATUS, EMP_STATUS_COLOR, EMP_STATUS_DEFS, POSITIONS, POSITION_LIST, POSITION_ZH, isActive } from "../lib/constants";
 import { TODAY_KEY, formatSeniority, inRange } from "../lib/dates";
 import { downloadEmployeeTemplate, parseAndDedupEmployees } from "../lib/excel";
 import { isSupabaseConfigured, deleteFromSupabase } from "../lib/supabase";
@@ -306,11 +306,34 @@ export function EmployeesPage() {
   const totalEmployees = employees.length;
   const activeCount = useMemo(() => employees.filter((e) => isActive(e)).length, [employees]);
   const leaderCount = useMemo(
-    () => employees.filter((e) => isActive(e) && (e.position === "Ca trưởng" || e.position === "Tổ trưởng")).length,
+    () =>
+      employees.filter(
+        (e) =>
+          isActive(e) &&
+          (e.position === POSITIONS.SHIFT_LEADER ||
+            e.position === POSITIONS.TEAM_LEADER ||
+            e.position === "Ca trưởng" ||
+            e.position === "Tổ trưởng")
+      ).length,
     [employees]
   );
   const workerCount = useMemo(
-    () => employees.filter((e) => isActive(e) && (e.position === "Công nhân" || e.position === "Kỹ thuật viên")).length,
+    () =>
+      employees.filter(
+        (e) => isActive(e) && (e.position === POSITIONS.WORKER || e.position === "Công nhân")
+      ).length,
+    [employees]
+  );
+  const otherAndTechCount = useMemo(
+    () =>
+      employees.filter(
+        (e) =>
+          isActive(e) &&
+          (e.position === POSITIONS.SUPPORT ||
+            e.position === POSITIONS.TECHNICIAN ||
+            e.position === "Công nhân khác" ||
+            e.position === "Kỹ thuật viên")
+      ).length,
     [employees]
   );
 
@@ -318,13 +341,6 @@ export function EmployeesPage() {
     <div className="space-y-4">
       {/* Venus Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <StatCard
-          icon={Users}
-          label={lang === "zh" ? "员工总数" : lang === "en" ? "Total Staff" : "Tổng nhân sự"}
-          value={totalEmployees}
-          iconBg="bg-[#F4F7FE]"
-          iconColor="text-[#4318FF]"
-        />
         <StatCard
           icon={UserCheck}
           label={lang === "zh" ? "在职员工" : lang === "en" ? "Active" : "Đang làm việc"}
@@ -336,16 +352,24 @@ export function EmployeesPage() {
         />
         <StatCard
           icon={Award}
-          label={lang === "zh" ? "班长 / 组长" : lang === "en" ? "Shift & Team Leaders" : "Ca & Tổ trưởng"}
+          label={lang === "zh" ? "班长 + 组长" : lang === "en" ? "Shift & Team Leaders" : "Ca + Tổ trưởng"}
           value={leaderCount}
           badgeType="info"
           iconBg="bg-[#F4F7FE]"
           iconColor="text-[#4318FF]"
         />
         <StatCard
-          icon={Briefcase}
-          label={lang === "zh" ? "工人和技术员" : lang === "en" ? "Workers & Tech" : "Công nhân & Kỹ thuật"}
+          icon={Users}
+          label={lang === "zh" ? "工人" : lang === "en" ? "Workers" : "Công nhân"}
           value={workerCount}
+          badgeType="info"
+          iconBg="bg-[#EBF3FE]"
+          iconColor="text-[#2B6CB0]"
+        />
+        <StatCard
+          icon={Briefcase}
+          label={lang === "zh" ? "其他工人 + 技术员" : lang === "en" ? "Support & Tech" : "Công nhân khác + Kỹ thuật viên"}
+          value={otherAndTechCount}
           badgeType="warning"
           iconBg="bg-[#FFF8E7]"
           iconColor="text-[#FFB547]"

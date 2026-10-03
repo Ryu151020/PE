@@ -31,7 +31,89 @@ export function ReportsPage() {
   const machinesById = useMemo(() => byId(db.machines), [db.machines]);
 
   const resignedInRange = useMemo(() => db.employees.filter((e) => !isActive(e) && e.resignDate && inRange(e.resignDate, range.from, range.to)), [db.employees, range]);
-  const turnoverByDay = useMemo(() => { const m = {}; resignedInRange.forEach((e) => (m[e.resignDate] = (m[e.resignDate] || 0) + 1)); return Object.entries(m).sort(([a], [b]) => (a < b ? -1 : 1)).map(([d, c]) => ({ date: toDisplay(d).slice(0, 5), count: c })); }, [resignedInRange]);
+
+  const isYearView = preset === "thisYear" || (range.from && range.to && monthsBetween(range.from, range.to) >= 2);
+
+  const turnoverChartData = useMemo(() => {
+    if (resignedInRange.length === 0) return [];
+
+    if (isYearView) {
+      const year = range.from ? range.from.slice(0, 4) : TODAY_KEY.slice(0, 4);
+      const monthNamesVi = ["Thg 1", "Thg 2", "Thg 3", "Thg 4", "Thg 5", "Thg 6", "Thg 7", "Thg 8", "Thg 9", "Thg 10", "Thg 11", "Thg 12"];
+      const monthNamesZh = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
+      const monthNamesEn = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+      let monthKeys = [];
+      if (preset === "thisYear") {
+        for (let m = 1; m <= 12; m++) {
+          monthKeys.push(`${year}-${String(m).padStart(2, "0")}`);
+        }
+      } else {
+        const startY = parseInt(range.from.slice(0, 4), 10);
+        const startM = parseInt(range.from.slice(5, 7), 10);
+        const endY = parseInt(range.to.slice(0, 4), 10);
+        const endM = parseInt(range.to.slice(5, 7), 10);
+        let curY = startY;
+        let curM = startM;
+        while (curY < endY || (curY === endY && curM <= endM)) {
+          monthKeys.push(`${curY}-${String(curM).padStart(2, "0")}`);
+          curM++;
+          if (curM > 12) {
+            curM = 1;
+            curY++;
+          }
+        }
+      }
+
+      const monthCounts = Object.fromEntries(monthKeys.map((k) => [k, 0]));
+      resignedInRange.forEach((e) => {
+        if (!e.resignDate) return;
+        const k = e.resignDate.slice(0, 7);
+        if (monthCounts[k] !== undefined) {
+          monthCounts[k]++;
+        } else {
+          monthCounts[k] = (monthCounts[k] || 0) + 1;
+        }
+      });
+
+      return Object.entries(monthCounts).map(([k, count]) => {
+        const [yStr, mStr] = k.split("-");
+        const mNum = parseInt(mStr, 10);
+        const label =
+          lang === "zh"
+            ? monthNamesZh[mNum - 1] || `${mNum}月`
+            : lang === "en"
+            ? monthNamesEn[mNum - 1] || `M${mNum}`
+            : monthNamesVi[mNum - 1] || `Thg ${mNum}`;
+
+        const fullLabel =
+          lang === "zh"
+            ? `${yStr}年${mNum}月`
+            : lang === "en"
+            ? `${monthNamesEn[mNum - 1]} ${yStr}`
+            : `Tháng ${mNum}/${yStr}`;
+
+        return {
+          date: label,
+          fullLabel,
+          count,
+        };
+      });
+    }
+
+    // Default: Group by day for day/week/month queries
+    const m = {};
+    resignedInRange.forEach((e) => {
+      m[e.resignDate] = (m[e.resignDate] || 0) + 1;
+    });
+    return Object.entries(m)
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([d, c]) => ({
+        date: toDisplay(d).slice(0, 5),
+        fullLabel: toDisplay(d),
+        count: c,
+      }));
+  }, [resignedInRange, isYearView, preset, range.from, range.to, lang]);
   const tenureBuckets = useMemo(() => {
     const buckets = ["< 1 tháng", "1-3 tháng", "3-6 tháng", "6-12 tháng", "1-2 năm", "> 2 năm"];
     const bucketOf = (join, end) => { const months = monthsBetween(join, end || TODAY_KEY); if (months < 1) return buckets[0]; if (months < 3) return buckets[1]; if (months < 6) return buckets[2]; if (months < 12) return buckets[3]; if (months < 24) return buckets[4]; return buckets[5]; };
@@ -136,18 +218,18 @@ export function ReportsPage() {
             title={t("turnoverReport", lang)}
             subtitle={`${t("totalResigned", lang)}: ${resignedInRange.length}`}
           >
-            {turnoverByDay.length === 0 ? (
+            {turnoverChartData.length === 0 ? (
               <div className="py-10 text-center text-sm text-mute">{t("noTurnoverInPeriod", lang)}</div>
             ) : (
               <div style={{ width: "100%", height: 220 }}>
                 <ResponsiveContainer>
-                  <BarChart data={turnoverByDay} margin={{ top: 22, right: 8, bottom: 0, left: 0 }}>
+                  <BarChart data={turnoverChartData} margin={{ top: 22, right: 8, bottom: 0, left: 0 }}>
                     <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#E9EDF7" />
-                    <XAxis dataKey="date" tick={AXIS_TICK} axisLine={false} tickLine={false} />
+                    <XAxis dataKey="date" tick={AXIS_TICK} axisLine={false} tickLine={false} interval={0} />
                     <YAxis tick={AXIS_TICK} allowDecimals={false} axisLine={false} tickLine={false} width={32} />
                     <Tooltip content={<VenusTooltip />} cursor={{ fill: "rgba(67,24,255,0.06)", radius: 8 }} />
-                    <Bar dataKey="count" name={t("resignedCount", lang)} fill="#4318FF" radius={[8, 8, 0, 0]} maxBarSize={35} animationDuration={500} animationEasing="ease-out">
-                      <LabelList dataKey="count" position="top" style={{ fontSize: 12, fontWeight: 700, fill: "#1B2559" }} />
+                    <Bar dataKey="count" name={t("resignedCount", lang)} fill="#4318FF" radius={[8, 8, 0, 0]} maxBarSize={32} animationDuration={500} animationEasing="ease-out">
+                      <LabelList dataKey="count" position="top" formatter={(val) => (val > 0 ? val : "")} style={{ fontSize: 12, fontWeight: 700, fill: "#1B2559" }} />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>

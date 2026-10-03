@@ -192,20 +192,27 @@ export function ScheduleRow({ machine, entry, molds, orders, ordersById, editabl
   };
   const currentOrderLabel = currentOrder ? orderLabel(currentOrder) : (entry.orderId ? String(entry.orderId) : "");
 
-  const moldOptions = useMemo(
-    () => molds.map((m) => ({ value: m.id, label: m.moldName })),
-    [molds]
-  );
+  const moldOptions = useMemo(() => {
+    const list = [...molds];
+    if (entry.moldId && !list.some((m) => m.id === entry.moldId)) {
+      list.push({ id: entry.moldId, moldName: entry.moldId });
+    }
+    return list.map((m) => ({ value: m.id, label: m.moldName }));
+  }, [molds, entry.moldId]);
 
   const orderOptions = useMemo(
-    () =>
-      orders
-        .filter((o) => !o.completed)
-        .map((o) => ({
-          value: o.id,
-          label: orderLabel(o),
-        })),
-    [orders]
+    () => {
+      const activeOrCurrent = orders.filter(
+        (o) => !o.completed || o.id === entry.orderId || o.orderCode === entry.orderId
+      );
+      return activeOrCurrent.map((o) => ({
+        value: o.id,
+        label:
+          orderLabel(o) +
+          (o.completed ? ` (${lang === "zh" ? "已完成" : lang === "en" ? "Completed" : "Đã hoàn thiện"})` : ""),
+      }));
+    },
+    [orders, entry.orderId, lang]
   );
 
   const effectiveFilmRoll = currentOrder ? (currentOrder.filmRollName || "") : (entry.filmRollName || "");
