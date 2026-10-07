@@ -76,7 +76,10 @@ export default defineConfig({
     "import.meta.env.VITE_APP_REVISION": JSON.stringify(commitHash),
     "import.meta.env.VITE_REVISION": JSON.stringify(commitHash),
   },
-  server: { port: 5173, open: true },
+  server: {
+    host: "0.0.0.0",
+    port: 5173,
+  },
 });
 
 

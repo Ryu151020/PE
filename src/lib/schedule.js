@@ -96,22 +96,83 @@ export function computeKpis(day, machines, employees) {
 
   const totalActiveEmployees = employees ? employees.filter((e) => isActive(e)).length : 0;
   const employeesById = byId(employees || []);
+
+  const dayWorkerSet = new Set(), dayTechSet = new Set(), dayOtherSet = new Set();
+  const nightWorkerSet = new Set(), nightTechSet = new Set(), nightOtherSet = new Set();
   const dayIds = new Set(), nightIds = new Set();
+
   if (day && day.entries) {
     Object.values(day.entries).forEach((entry) => {
       if (!entry) return;
-      [...(entry.dayShift?.workers || []), ...(entry.dayShift?.technicians || []), ...(entry.dayShift?.otherWorkers || [])].forEach((id) => dayIds.add(id));
-      [...(entry.nightShift?.workers || []), ...(entry.nightShift?.technicians || []), ...(entry.nightShift?.otherWorkers || [])].forEach((id) => nightIds.add(id));
+      (entry.dayShift?.workers || []).forEach((id) => {
+        if (id && (employeesById[id] || !employees?.length)) {
+          dayWorkerSet.add(id);
+          dayIds.add(id);
+        }
+      });
+      (entry.dayShift?.technicians || []).forEach((id) => {
+        if (id && (employeesById[id] || !employees?.length)) {
+          dayTechSet.add(id);
+          dayIds.add(id);
+        }
+      });
+      (entry.dayShift?.otherWorkers || []).forEach((id) => {
+        if (id && (employeesById[id] || !employees?.length)) {
+          dayOtherSet.add(id);
+          dayIds.add(id);
+        }
+      });
+
+      (entry.nightShift?.workers || []).forEach((id) => {
+        if (id && (employeesById[id] || !employees?.length)) {
+          nightWorkerSet.add(id);
+          nightIds.add(id);
+        }
+      });
+      (entry.nightShift?.technicians || []).forEach((id) => {
+        if (id && (employeesById[id] || !employees?.length)) {
+          nightTechSet.add(id);
+          nightIds.add(id);
+        }
+      });
+      (entry.nightShift?.otherWorkers || []).forEach((id) => {
+        if (id && (employeesById[id] || !employees?.length)) {
+          nightOtherSet.add(id);
+          nightIds.add(id);
+        }
+      });
     });
-    if (day.dayLeader) dayIds.add(day.dayLeader);
-    (day.dayTeamLeaders || []).forEach((id) => dayIds.add(id));
-    if (day.nightLeader) nightIds.add(day.nightLeader);
-    (day.nightTeamLeaders || []).forEach((id) => nightIds.add(id));
+
+    if (day.dayLeader && (employeesById[day.dayLeader] || !employees?.length)) {
+      dayIds.add(day.dayLeader);
+    }
+    (day.dayTeamLeaders || []).forEach((id) => {
+      if (id && (employeesById[id] || !employees?.length)) dayIds.add(id);
+    });
+
+    if (day.nightLeader && (employeesById[day.nightLeader] || !employees?.length)) {
+      nightIds.add(day.nightLeader);
+    }
+    (day.nightTeamLeaders || []).forEach((id) => {
+      if (id && (employeesById[id] || !employees?.length)) nightIds.add(id);
+    });
   }
+
+  const dayLeaderCount = day?.dayLeader && (employeesById[day.dayLeader] || !employees?.length) ? 1 : 0;
+  const nightLeaderCount = day?.nightLeader && (employeesById[day.nightLeader] || !employees?.length) ? 1 : 0;
+  const dayTeamLeaderCount = (day?.dayTeamLeaders || []).filter((id) => id && (employeesById[id] || !employees?.length)).length;
+  const nightTeamLeaderCount = (day?.nightTeamLeaders || []).filter((id) => id && (employeesById[id] || !employees?.length)).length;
+
+  const byPosition = {
+    [POSITIONS.WORKER]: dayWorkerSet.size + nightWorkerSet.size,
+    [POSITIONS.TECHNICIAN]: dayTechSet.size + nightTechSet.size,
+    [POSITIONS.SUPPORT]: dayOtherSet.size + nightOtherSet.size,
+    [POSITIONS.TEAM_LEADER]: dayTeamLeaderCount + nightTeamLeaderCount,
+    [POSITIONS.SHIFT_LEADER]: dayLeaderCount + nightLeaderCount,
+  };
+
   const workingIds = new Set([...dayIds, ...nightIds]);
   const workingToday = workingIds.size;
-  const byPosition = { [POSITIONS.WORKER]: 0, [POSITIONS.TECHNICIAN]: 0, [POSITIONS.SUPPORT]: 0, [POSITIONS.TEAM_LEADER]: 0, [POSITIONS.SHIFT_LEADER]: 0 };
-  workingIds.forEach((id) => { const e = employeesById[id]; if (e && byPosition[e.position] !== undefined) byPosition[e.position]++; });
 
   return { total, totalSlots, open, stopped, dayRunning, nightRunning, openDay, openNight, stoppedDay, stoppedNight, totalActiveEmployees, dayHeadcount: dayIds.size, nightHeadcount: nightIds.size, workingToday, byPosition };
 }
