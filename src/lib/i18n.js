@@ -99,8 +99,11 @@ export const DICT = {
 
   // Common UI
   search: { vi: "Tìm kiếm...", zh: "搜索...", en: "Search..." },
-  searchMoldPlaceholder: { vi: "Tìm khuôn...", zh: "搜索模具...", en: "Search mold..." },
-  searchOrderPlaceholder: { vi: "Tìm đơn...", zh: "搜索订单...", en: "Search order..." },
+  searchMoldPlaceholder: { vi: "Tìm khuôn... / 搜索...", zh: "搜索模具...", en: "Search mold..." },
+  searchOrderPlaceholder: { vi: "Tìm đơn... / 搜索...", zh: "搜索订单...", en: "Search order..." },
+  searchLeader: { vi: "Tìm ca trưởng... / 搜索...", zh: "搜索班长...", en: "Search shift leader..." },
+  searchTeamLeader: { vi: "Tìm tổ trưởng... / 搜索...", zh: "搜索组长...", en: "Search team leader..." },
+  searchWorkerPlaceholder: { vi: "Tìm nhân viên, mã NV... / 搜索...", zh: "搜索员工、工号...", en: "Search name, ID..." },
   notFound: { vi: "Không tìm thấy", zh: "未找到", en: "Not found" },
   selectPlaceholder: { vi: "— chọn —", zh: "— 选择 —", en: "— select —" },
   unassigned: { vi: "", zh: "", en: "" },

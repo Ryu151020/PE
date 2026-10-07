@@ -45,11 +45,20 @@ const cleanOrder = (o) => {
   return { ...o, orderCode: code };
 };
 
+const cleanEmployee = (e) => {
+  if (!e) return e;
+  if (e.position === "Công nhân khác" || e.position === "SUPPORT") {
+    return { ...e, position: "Công nhân" };
+  }
+  return e;
+};
+
 export function useLocalDb() {
   const [db, setDbState] = useState(() => {
     const saved = storage.get(LOCAL_DB_KEY);
     if (saved && saved.machines && saved.machines.length > 0) {
       if (saved.orders) saved.orders = saved.orders.map(cleanOrder);
+      if (saved.employees) saved.employees = saved.employees.map(cleanEmployee);
       return saved;
     }
     const initial = createBlankDb();
@@ -571,7 +580,10 @@ export function useLocalDb() {
   const setDb = useCallback(
     (updater) => {
       setDbState((prev) => {
-        const next = typeof updater === "function" ? updater(prev) : updater;
+        let next = typeof updater === "function" ? updater(prev) : updater;
+        if (next && next.employees) {
+          next = { ...next, employees: next.employees.map(cleanEmployee) };
+        }
         storage.set(LOCAL_DB_KEY, next);
         prevDbRef.current = next;
 

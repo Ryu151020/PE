@@ -89,6 +89,7 @@
 .pe-app .v-input--ghost { background: transparent; border-color: transparent; }
 .pe-app .v-input--ghost:hover { border-color: var(--v-grey-400); }
 .pe-app .v-input--ghost:focus { background: #fff; border-color: var(--v-primary); }
+select option { color: #1B2559 !important; background-color: #ffffff !important; font-weight: 500 !important; }
 
 /* ============ 6. Badges / chips ============ */
 .v-badge { display: inline-flex; align-items: center; gap: 4px; border-radius: 58px; padding: 3px 10px; font-size: 12px; line-height: 20px; font-weight: 700; }

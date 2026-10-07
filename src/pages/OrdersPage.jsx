@@ -491,8 +491,8 @@ export function OrdersPage() {
                         value={o.completed ? "done" : "open"}
                         onChange={(e) => handleStatusChange(o, e.target.value === "done")}
                       >
-                        <option value="open">{getOrderStatusLabel("open", lang)}</option>
-                        <option value="done">{getOrderStatusLabel("done", lang)}</option>
+                        <option value="open" className="text-[#1B2559] bg-white font-medium">{getOrderStatusLabel("open", lang)}</option>
+                        <option value="done" className="text-[#1B2559] bg-white font-medium">{getOrderStatusLabel("done", lang)}</option>
                       </select>
                     </div>
                   </td>

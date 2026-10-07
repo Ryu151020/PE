@@ -49,7 +49,6 @@ export function seedData() {
     if (i === 0 || i === 1) position = POSITIONS.SHIFT_LEADER;
     else if (i >= 2 && i < 6) position = POSITIONS.TEAM_LEADER;
     else if (i >= 6 && i < 12) position = POSITIONS.TECHNICIAN;
-    else if (i >= 12 && i < 16) position = POSITIONS.SUPPORT;
     const joinDate = addDaysKey(TODAY_KEY, -(200 + i * 19));
     const isResigned = i % 7 === 3;
     const status = isResigned ? EMP_STATUS.RESIGNED : (i % 11 === 0 ? EMP_STATUS.PROBATION : i % 7 === 0 ? EMP_STATUS.SEASONAL : EMP_STATUS.OFFICIAL);

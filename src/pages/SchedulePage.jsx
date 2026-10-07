@@ -35,9 +35,9 @@ export function SchedulePage() {
   const ordersById = useMemo(() => byId(orders), [orders]);
   const moldsById = useMemo(() => byId(molds), [molds]);
   const employeesById = useMemo(() => byId(employees), [employees]);
-  const activeWorkers = useMemo(() => employees.filter((e) => isActive(e) && e.position === POSITIONS.WORKER), [employees]);
-  const techniciansPool = useMemo(() => employees.filter((e) => isActive(e) && e.position === POSITIONS.TECHNICIAN), [employees]);
-  const supportPool = useMemo(() => employees.filter((e) => isActive(e) && e.position === POSITIONS.SUPPORT), [employees]);
+  const activeWorkers = useMemo(() => employees.filter((e) => isActive(e) && (e.position === POSITIONS.WORKER || e.position === "Công nhân")), [employees]);
+  const techniciansPool = useMemo(() => employees.filter((e) => isActive(e) && (e.position === POSITIONS.TECHNICIAN || e.position === "Kỹ thuật viên")), [employees]);
+  const supportPool = activeWorkers;
 
   useEffect(() => {
     const existing = sanitizeDay(db.schedules?.[dateKey], machines);

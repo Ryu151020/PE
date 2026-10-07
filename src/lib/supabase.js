@@ -25,6 +25,10 @@ export const supabase = isSupabaseConfigured
 // ==========================================
 
 export function employeeFromDb(row) {
+  let position = row.position;
+  if (position === "Công nhân khác" || position === "SUPPORT") {
+    position = "Công nhân";
+  }
   return {
     id: row.id,
     employeeCode: row.employee_code,
@@ -36,7 +40,7 @@ export function employeeFromDb(row) {
     joinDate: row.join_date || "",
     resignDate: row.resign_date || null,
     resignReason: row.resign_reason || "",
-    position: row.position,
+    position,
     status: row.status,
     notes: row.notes || "",
   };

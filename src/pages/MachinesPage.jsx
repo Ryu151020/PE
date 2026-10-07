@@ -339,7 +339,7 @@ export function MachinesPage() {
                         onChange={(e) => updateMold(m.id, { status: e.target.value })}
                       >
                         {MOLD_STATUS_DEFS.map((s) => (
-                          <option key={s.vi} value={s.vi}>
+                          <option key={s.vi} value={s.vi} className="text-[#1B2559] bg-white font-medium">
                             {getMoldStatusLabel(s.vi, lang)}
                           </option>
                         ))}

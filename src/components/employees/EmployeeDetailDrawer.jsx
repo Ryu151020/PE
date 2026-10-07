@@ -16,7 +16,8 @@ export function EmployeeDetailDrawer({ employee, onClose, machinesById, ordersBy
     Object.entries(schedules).sort(([a], [b]) => (a < b ? 1 : -1)).forEach(([date, day]) => {
       if (!day) return;
       Object.values(day.entries).forEach((entry) => {
-        const inDay = entry.dayShift.workers.includes(employee.id), inNight = entry.nightShift.workers.includes(employee.id);
+        const inDay = (entry.dayShift.workers || []).includes(employee.id) || (entry.dayShift.otherWorkers || []).includes(employee.id) || (entry.dayShift.technicians || []).includes(employee.id);
+        const inNight = (entry.nightShift.workers || []).includes(employee.id) || (entry.nightShift.otherWorkers || []).includes(employee.id) || (entry.nightShift.technicians || []).includes(employee.id);
         if (!inDay && !inNight) return;
         const ot = inDay ? entry.dayShift.overtimeHours : entry.nightShift.overtimeHours;
         rows.push({ date, machineId: entry.machineId, orderId: entry.orderId, moldId: entry.moldId, shift: inDay ? "Ngày" : "Đêm", ot: ot || 0 });

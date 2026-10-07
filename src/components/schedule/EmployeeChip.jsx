@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Plus, X } from "lucide-react";
+import { Plus, Search, X } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { EMP_STATUS_TAG, POSITIONS } from "../../lib/constants";
 import { getPositionLabel, getStatusLabel, t } from "../../lib/i18n";
@@ -106,7 +106,7 @@ export function EmployeeMultiSelect({ candidates, selectedIds, editable, onChang
   const [addCoords, setAddCoords] = useState({ isFlipUp: false, top: 0, bottom: 0, left: 0, width: 250 });
   const [expandCoords, setExpandCoords] = useState({ isFlipUp: false, top: 0, bottom: 0, left: 0, width: 260 });
 
-  const { db } = useApp() || {};
+  const { db, lang = "vi" } = useApp() || {};
   const allEmployeesMap = useMemo(() => {
     const map = {};
     (db?.employees || []).forEach((e) => {
@@ -128,9 +128,12 @@ export function EmployeeMultiSelect({ candidates, selectedIds, editable, onChang
   const visible = selectedEmployees.slice(0, VISIBLE);
   const overflow = selectedEmployees.slice(VISIBLE);
   const results = useMemo(() => {
-    const pool = candidates.filter((c) => !selectedIds.includes(c.id));
+    const pool = (candidates || []).filter((c) => !selectedIds.includes(c.id));
     const q = query.toLowerCase().trim();
-    return (q ? pool.filter((c) => c.vietnameseName.toLowerCase().includes(q) || c.employeeCode.toLowerCase().includes(q)) : pool).slice(0, 8);
+    const filtered = q
+      ? pool.filter((c) => (c.vietnameseName || "").toLowerCase().includes(q) || (c.employeeCode || "").toLowerCase().includes(q))
+      : pool;
+    return [...filtered].sort((a, b) => (a.vietnameseName || "").localeCompare(b.vietnameseName || "", "vi"));
   }, [candidates, selectedIds, query]);
 
   const add = (id) => { onChange([...selectedIds, id]); setQuery(""); setAddOpen(false); };
@@ -140,8 +143,8 @@ export function EmployeeMultiSelect({ candidates, selectedIds, editable, onChang
   const updateAddPosition = () => {
     if (!addTriggerRef.current) return;
     const rect = addTriggerRef.current.getBoundingClientRect();
-    const dropdownWidth = 250;
-    const dropdownHeight = 220;
+    const dropdownWidth = 260;
+    const dropdownHeight = 280;
     const spaceBelow = window.innerHeight - rect.bottom;
     const spaceAbove = rect.top;
     const flipUp = spaceBelow < dropdownHeight && spaceAbove > dropdownHeight;
@@ -277,13 +280,15 @@ export function EmployeeMultiSelect({ candidates, selectedIds, editable, onChang
                   width: expandCoords.width,
                   zIndex: 99999,
                 }}
-                className="rounded-xs border border-line bg-white p-2.5 shadow-2xl animate-in fade-in zoom-in-95 duration-100 text-xs"
+                className="max-h-64 overflow-hidden border border-line bg-white shadow-2xl rounded-md flex flex-col animate-in fade-in zoom-in-95 duration-100 text-xs"
               >
-                <div className="mb-1.5 text-xs font-bold text-mute flex items-center justify-between">
-                  <span>Xem tất cả ({selectedEmployees.length})</span>
+                <div className="flex items-center justify-between border-b border-line px-2.5 py-2 bg-canvas">
+                  <span className="font-semibold text-ink text-xs">
+                    {lang === "zh" ? "全部人员" : lang === "en" ? "All staff" : "Xem tất cả"} ({selectedEmployees.length})
+                  </span>
                   <button type="button" onClick={() => setExpandOpen(false)} className="text-mute hover:text-ink cursor-pointer"><X size={13} /></button>
                 </div>
-                <div className="flex flex-wrap gap-1 max-h-[220px] overflow-y-auto">
+                <div className="flex flex-wrap gap-1 max-h-[190px] overflow-y-auto p-2">
                   {selectedEmployees.map((emp) => (
                     <EmployeeChip key={emp.id} employee={emp} editable={editable} onRemove={() => remove(emp.id)} draggable={editable && !!dragContext}
                       onDragStart={(e) => { closeAllPopovers(); if (dragContext) e.dataTransfer.setData("application/json", JSON.stringify({ employeeId: emp.id, sourceMachineId: dragContext.machineId, sourceColKey: dragContext.colKey })); }} />
@@ -315,33 +320,58 @@ export function EmployeeMultiSelect({ candidates, selectedIds, editable, onChang
                   position: "fixed",
                   ...(addCoords.isFlipUp ? { bottom: addCoords.bottom } : { top: addCoords.top }),
                   left: addCoords.left,
-                  width: addCoords.width,
+                  width: Math.max(addCoords.width, 240),
                   zIndex: 99999,
                 }}
-                className="rounded-xs border border-line bg-white p-2.5 shadow-2xl animate-in fade-in zoom-in-95 duration-100 text-xs"
+                className="max-h-64 overflow-hidden border border-line bg-white shadow-2xl rounded-md flex flex-col animate-in fade-in zoom-in-95 duration-100 text-sm"
               >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-bold text-ink text-xs">Thêm nhân viên</span>
-                  <button type="button" onClick={() => setAddOpen(false)} className="text-mute hover:text-ink cursor-pointer"><X size={13} /></button>
-                </div>
-                <input
-                  autoFocus
-                  className={`${inputCls} mb-1.5 text-xs py-1.5`}
-                  placeholder="Tìm theo tên, mã NV..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
-                <div className="max-h-[170px] overflow-y-auto">
-                  {results.length === 0 && <div className="px-1 py-2 text-xs text-mute text-center">Không có kết quả / 无结果</div>}
-                  {results.map((emp) => (
-                    <button key={emp.id} className="flex w-full items-center justify-between px-2 py-1.5 text-left text-xs rounded-xs hover:bg-canvas cursor-pointer" onClick={() => add(emp.id)}>
-                      <span className="truncate font-medium">{emp.vietnameseName}</span>
-                      <span className="flex items-center gap-1 shrink-0 ml-1.5">
-                        {EMP_STATUS_TAG[emp.status] && <span className={`rounded-xs ${EMP_STATUS_TAG[emp.status].color} px-1 text-[10px] font-bold text-white`}>{EMP_STATUS_TAG[emp.status].char}</span>}
-                        <span className="text-[11px] text-mute">{emp.employeeCode}</span>
-                      </span>
+                <div className="flex items-center gap-1.5 border-b border-line px-2.5 py-2 bg-canvas">
+                  <Search size={14} className="text-mute shrink-0" />
+                  <input
+                    autoFocus
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder={t("searchWorkerPlaceholder", lang)}
+                    className="w-full bg-transparent text-sm text-ink outline-none placeholder:text-mute"
+                  />
+                  {query && (
+                    <button
+                      type="button"
+                      onClick={() => setQuery("")}
+                      className="text-mute hover:text-ink cursor-pointer"
+                    >
+                      <X size={12} />
                     </button>
-                  ))}
+                  )}
+                </div>
+                <div className="max-h-52 overflow-y-auto p-1">
+                  {results.length === 0 ? (
+                    <div className="px-2.5 py-3 text-center text-sm text-mute">{t("notFound", lang)}</div>
+                  ) : (
+                    results.map((emp) => (
+                      <div
+                        key={emp.id}
+                        onClick={() => add(emp.id)}
+                        className="flex items-center justify-between gap-1.5 px-2.5 py-1.5 text-sm rounded-xs cursor-pointer hover:bg-canvas text-ink transition-colors"
+                      >
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="truncate font-medium">{emp.vietnameseName}</span>
+                          {emp.chineseName && (
+                            <span className="text-xs text-mute truncate">{emp.chineseName}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0 ml-1.5">
+                          {EMP_STATUS_TAG[emp.status] && (
+                            <span className={`rounded-xs ${EMP_STATUS_TAG[emp.status].color} px-1 text-[10px] font-bold text-white`}>
+                              {EMP_STATUS_TAG[emp.status].char}
+                            </span>
+                          )}
+                          <span className="text-xs text-mute font-mono">{emp.employeeCode}</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>,
               document.body

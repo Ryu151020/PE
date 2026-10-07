@@ -320,19 +320,21 @@ export function EmployeesPage() {
   const workerCount = useMemo(
     () =>
       employees.filter(
-        (e) => isActive(e) && (e.position === POSITIONS.WORKER || e.position === "Công nhân")
+        (e) =>
+          isActive(e) &&
+          (e.position === POSITIONS.WORKER ||
+            e.position === "Công nhân" ||
+            e.position === POSITIONS.SUPPORT ||
+            e.position === "Công nhân khác")
       ).length,
     [employees]
   );
-  const otherAndTechCount = useMemo(
+  const techCount = useMemo(
     () =>
       employees.filter(
         (e) =>
           isActive(e) &&
-          (e.position === POSITIONS.SUPPORT ||
-            e.position === POSITIONS.TECHNICIAN ||
-            e.position === "Công nhân khác" ||
-            e.position === "Kỹ thuật viên")
+          (e.position === POSITIONS.TECHNICIAN || e.position === "Kỹ thuật viên")
       ).length,
     [employees]
   );
@@ -368,8 +370,8 @@ export function EmployeesPage() {
         />
         <StatCard
           icon={Briefcase}
-          label={lang === "zh" ? "其他工人 + 技术员" : lang === "en" ? "Support & Tech" : "Công nhân khác + Kỹ thuật viên"}
-          value={otherAndTechCount}
+          label={lang === "zh" ? "技术员" : lang === "en" ? "Technicians" : "Kỹ thuật viên"}
+          value={techCount}
           badgeType="warning"
           iconBg="bg-[#FFF8E7]"
           iconColor="text-[#FFB547]"
@@ -626,11 +628,11 @@ export function EmployeesPage() {
                   <td className={`px-2 py-2 align-middle min-w-[175px] border-b border-r border-line ${selCls(e.id, "position")}`} onClick={() => setSelected({ rowId: e.id, colKey: "position" })}>
                     <select
                       className={`${inputCls} v-input--sm text-sm w-full font-medium`}
-                      value={e.position}
+                      value={e.position === "Công nhân khác" ? POSITIONS.WORKER : e.position}
                       onChange={(ev) => updateEmployee(e.id, { position: ev.target.value })}
                     >
                       {POSITION_LIST.map((p) => (
-                        <option key={p} value={p}>
+                        <option key={p} value={p} className="text-[#1B2559] bg-white font-medium">
                           {getPositionLabel(p, lang)}
                         </option>
                       ))}
@@ -644,7 +646,7 @@ export function EmployeesPage() {
                       onChange={(ev) => handleStatusChange(e, ev.target.value)}
                     >
                       {EMP_STATUS_DEFS.map((s) => (
-                        <option key={s.vi} value={s.vi}>
+                        <option key={s.vi} value={s.vi} className="text-[#1B2559] bg-white font-medium">
                           {getStatusLabel(s.vi, lang)}
                         </option>
                       ))}

@@ -6,12 +6,17 @@ export const POSITION_DEFS = [
   { key: "TEAM_LEADER", vi: "Tổ trưởng", zh: "组长" },
   { key: "TECHNICIAN", vi: "Kỹ thuật viên", zh: "技术员" },
   { key: "WORKER", vi: "Công nhân", zh: "工人" },
-  { key: "SUPPORT", vi: "Công nhân khác", zh: "其他工人" },
 ];
 
-export const POSITIONS = Object.fromEntries(POSITION_DEFS.map((p) => [p.key, p.vi]));
+export const POSITIONS = {
+  ...Object.fromEntries(POSITION_DEFS.map((p) => [p.key, p.vi])),
+  SUPPORT: "Công nhân khác",
+};
 
-export const POSITION_ZH = Object.fromEntries(POSITION_DEFS.map((p) => [p.vi, p.zh]));
+export const POSITION_ZH = {
+  ...Object.fromEntries(POSITION_DEFS.map((p) => [p.vi, p.zh])),
+  "Công nhân khác": "其他工人",
+};
 
 export const POSITION_LIST = POSITION_DEFS.map((p) => p.vi);
 
