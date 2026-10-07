@@ -103,8 +103,8 @@ export function EmployeeMultiSelect({ candidates, selectedIds, editable, onChang
   const expandTriggerRef = useRef(null);
   const expandDropdownRef = useRef(null);
 
-  const [addCoords, setAddCoords] = useState({ isFlipUp: false, top: 0, bottom: 0, left: 0, width: 250 });
-  const [expandCoords, setExpandCoords] = useState({ isFlipUp: false, top: 0, bottom: 0, left: 0, width: 260 });
+  const [addCoords, setAddCoords] = useState({ isFlipUp: false, top: 0, bottom: 0, left: 0, width: 340 });
+  const [expandCoords, setExpandCoords] = useState({ isFlipUp: false, top: 0, bottom: 0, left: 0, width: 280 });
 
   const { db, lang = "vi" } = useApp() || {};
   const allEmployeesMap = useMemo(() => {
@@ -143,7 +143,7 @@ export function EmployeeMultiSelect({ candidates, selectedIds, editable, onChang
   const updateAddPosition = () => {
     if (!addTriggerRef.current) return;
     const rect = addTriggerRef.current.getBoundingClientRect();
-    const dropdownWidth = 260;
+    const dropdownWidth = 340;
     const dropdownHeight = 280;
     const spaceBelow = window.innerHeight - rect.bottom;
     const spaceAbove = rect.top;
@@ -320,7 +320,7 @@ export function EmployeeMultiSelect({ candidates, selectedIds, editable, onChang
                   position: "fixed",
                   ...(addCoords.isFlipUp ? { bottom: addCoords.bottom } : { top: addCoords.top }),
                   left: addCoords.left,
-                  width: Math.max(addCoords.width, 240),
+                  width: Math.max(addCoords.width, 340),
                   zIndex: 99999,
                 }}
                 className="max-h-64 overflow-hidden border border-line bg-white shadow-2xl rounded-md flex flex-col animate-in fade-in zoom-in-95 duration-100 text-sm"
@@ -353,15 +353,16 @@ export function EmployeeMultiSelect({ candidates, selectedIds, editable, onChang
                       <div
                         key={emp.id}
                         onClick={() => add(emp.id)}
-                        className="flex items-center justify-between gap-1.5 px-2.5 py-1.5 text-sm rounded-xs cursor-pointer hover:bg-canvas text-ink transition-colors"
+                        title={`${emp.vietnameseName}${emp.chineseName ? ` (${emp.chineseName})` : ""} · ${emp.employeeCode}`}
+                        className="flex items-center justify-between gap-2 px-2.5 py-1.5 text-sm rounded-xs cursor-pointer hover:bg-canvas text-ink transition-colors"
                       >
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="truncate font-medium">{emp.vietnameseName}</span>
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                          <span className="font-medium text-ink truncate">{emp.vietnameseName}</span>
                           {emp.chineseName && (
-                            <span className="text-xs text-mute truncate">{emp.chineseName}</span>
+                            <span className="text-xs text-mute shrink-0">({emp.chineseName})</span>
                           )}
                         </div>
-                        <div className="flex items-center gap-1 shrink-0 ml-1.5">
+                        <div className="flex items-center gap-1.5 shrink-0 ml-2">
                           {EMP_STATUS_TAG[emp.status] && (
                             <span className={`rounded-xs ${EMP_STATUS_TAG[emp.status].color} px-1 text-[10px] font-bold text-white`}>
                               {EMP_STATUS_TAG[emp.status].char}
