@@ -200,20 +200,59 @@ export function ScheduleRow({ machine, entry, molds, orders, ordersById, editabl
     return list.map((m) => ({ value: m.id, label: m.moldName }));
   }, [molds, entry.moldId]);
 
-  const orderOptions = useMemo(
-    () => {
-      const activeOrCurrent = orders.filter(
-        (o) => !o.completed || o.id === entry.orderId || o.orderCode === entry.orderId
+  const currentMold = molds.find((m) => m.id === entry.moldId);
+  const currentMoldName = currentMold?.moldName || entry.moldId || "";
+
+  const { moldOrderOptions, otherOrderOptions } = useMemo(() => {
+    const activeOrCurrent = orders.filter(
+      (o) => !o.completed || o.id === entry.orderId || o.orderCode === entry.orderId
+    );
+
+    if (!entry.moldId) {
+      return {
+        moldOrderOptions: activeOrCurrent.map((o) => {
+          const oMold = molds.find((m) => m.id === o.moldId);
+          const moldName = oMold?.moldName || o.moldId;
+          return {
+            value: o.id,
+            label:
+              orderLabel(o) +
+              (o.completed ? ` (${lang === "zh" ? "已完成" : lang === "en" ? "Completed" : "Đã hoàn thiện"})` : ""),
+            sub: moldName ? `[${moldName}]` : "",
+          };
+        }),
+        otherOrderOptions: [],
+      };
+    }
+
+    const moldOpts = [];
+    const otherOpts = [];
+
+    activeOrCurrent.forEach((o) => {
+      const oMold = molds.find((m) => m.id === o.moldId);
+      const oMoldName = oMold?.moldName || o.moldId;
+      const isMatch = Boolean(
+        o.moldId === entry.moldId ||
+        (currentMoldName && oMoldName && String(currentMoldName).trim().toLowerCase() === String(oMoldName).trim().toLowerCase())
       );
-      return activeOrCurrent.map((o) => ({
-        value: o.id,
-        label:
-          orderLabel(o) +
-          (o.completed ? ` (${lang === "zh" ? "已完成" : lang === "en" ? "Completed" : "Đã hoàn thiện"})` : ""),
-      }));
-    },
-    [orders, entry.orderId, lang]
-  );
+
+      const label =
+        orderLabel(o) +
+        (o.completed ? ` (${lang === "zh" ? "已完成" : lang === "en" ? "Completed" : "Đã hoàn thiện"})` : "");
+
+      if (isMatch) {
+        moldOpts.push({ value: o.id, label });
+      } else {
+        otherOpts.push({
+          value: o.id,
+          label,
+          sub: oMoldName || (lang === "zh" ? "未设模具" : "Chưa ghép"),
+        });
+      }
+    });
+
+    return { moldOrderOptions: moldOpts, otherOrderOptions: otherOpts };
+  }, [orders, entry.orderId, entry.moldId, molds, currentMoldName, lang]);
 
   const effectiveFilmRoll = currentOrder ? (currentOrder.filmRollName || "") : (entry.filmRollName || "");
 
@@ -244,10 +283,13 @@ export function ScheduleRow({ machine, entry, molds, orders, ordersById, editabl
           value={entry.orderId || null}
           selectedLabel={currentOrderLabel}
           onChange={handleOrderChange}
-          options={orderOptions}
+          options={moldOrderOptions}
+          otherOptions={otherOrderOptions}
+          groupTitle={currentMoldName ? `${lang === "zh" ? "模具订单" : "Đơn theo khuôn"}: ${currentMoldName}` : undefined}
+          otherGroupTitle={lang === "zh" ? "其他模具订单" : "Đơn hàng khuôn khác"}
           cellMode={true}
           disabled={!editable}
-          searchPlaceholder="Tìm đơn... / 搜索..."
+          searchPlaceholder={lang === "zh" ? "搜索订单..." : "Tìm đơn..."}
         />
       </td>
       <td className="border-r border-b border-line px-2 py-1.5 align-middle bg-white group-hover:bg-[#F0F4FE] transition-colors">
