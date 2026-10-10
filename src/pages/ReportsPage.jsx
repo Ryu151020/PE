@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle } from "lucide-react";
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, LabelList, Pie, PieChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
@@ -14,7 +13,7 @@ import { CountUp } from "../components/ui/CountUp";
 import { PageHeader } from "../components/ui/PageHeader";
 import { Segmented } from "../components/ui/Segmented";
 import { useApp } from "../context/AppContext";
-import { EMP_STATUS_COLOR, EMP_STATUS_ZH, PIE_COLORS, POSITION_ZH, TENURE_ZH, isActive, reasonZh } from "../lib/constants";
+import { EMP_STATUS_COLOR, EMP_STATUS_ZH, PIE_COLORS, POSITION_ZH, TENURE_ZH, getMoldColor, isActive, reasonZh } from "../lib/constants";
 import { TODAY_KEY, computePreset, inRange, monthsBetween, toDisplay } from "../lib/dates";
 import { byId, computeKpis } from "../lib/schedule";
 import { card, inputCls } from "../lib/styles";
@@ -162,6 +161,40 @@ export function ReportsPage() {
     Object.entries(db.schedules).forEach(([date, day]) => { if (!day || !inRange(date, range.from, range.to)) return; const entry = day.entries[m.id]; if (!entry) return; const hasDay = (entry.dayShift?.workers || []).length > 0, hasNight = (entry.nightShift?.workers || []).length > 0; if (hasDay) { dayShiftDays++; openDays++; } if (hasNight) nightShiftDays++; if (!hasDay && !hasNight) stoppedDays++; if (entry.orderId) orderSet.add(entry.orderId); [...(entry.dayShift?.workers || []), ...(entry.nightShift?.workers || [])].forEach((id) => workerSet.add(id)); });
     return { machine: m, openDays, stoppedDays, orderCount: orderSet.size, workerCount: workerSet.size, dayShiftDays, nightShiftDays };
   }), [db.machines, db.schedules, range]);
+
+  const moldSummary = useMemo(() => (db.molds || []).map((mold) => {
+    let openDays = 0, stoppedDays = 0, dayShiftDays = 0, nightShiftDays = 0;
+    const machineSet = new Set(), orderSet = new Set(), workerSet = new Set();
+    Object.entries(db.schedules || {}).forEach(([date, day]) => {
+      if (!day || !inRange(date, range.from, range.to)) return;
+      Object.entries(day.entries || {}).forEach(([mId, entry]) => {
+        if (!entry) return;
+        const entryMoldId = entry.moldId || machinesById[mId]?.moldId;
+        const oMold = moldsById[entryMoldId] || moldsById[entry.moldId];
+        const moldName = oMold?.moldName || entryMoldId;
+        if (entryMoldId !== mold.id && moldName !== mold.moldName) return;
+
+        machineSet.add(mId);
+        const hasDay = (entry.dayShift?.workers || []).length > 0;
+        const hasNight = (entry.nightShift?.workers || []).length > 0;
+        if (hasDay) { dayShiftDays++; openDays++; }
+        if (hasNight) nightShiftDays++;
+        if (!hasDay && !hasNight) stoppedDays++;
+        if (entry.orderId) orderSet.add(entry.orderId);
+        [...(entry.dayShift?.workers || []), ...(entry.nightShift?.workers || [])].forEach((id) => workerSet.add(id));
+      });
+    });
+    return {
+      mold,
+      machineCount: machineSet.size,
+      openDays,
+      stoppedDays,
+      orderCount: orderSet.size,
+      workerCount: workerSet.size,
+      dayShiftDays,
+      nightShiftDays,
+    };
+  }).sort((a, b) => b.openDays - a.openDays || b.machineCount - a.machineCount), [db.molds, db.machines, db.schedules, machinesById, moldsById, range]);
 
   const presetItems = [
     { key: "yesterday", label: t("yesterday", lang) },
@@ -320,20 +353,20 @@ export function ReportsPage() {
                 </thead>
                 <tbody>
                   {shiftSummary.map((r) => (
-                    <tr key={r.employee.id} className="border-t border-line cursor-pointer hover:bg-canvas" onClick={() => setDetailEmployee(r.employee)}>
-                      <td className="px-2 py-2 text-mute">{r.employee.employeeCode}</td>
-                      <td className="px-2 py-2 font-medium text-ink">
+                    <tr key={r.employee.id} className="border-t border-line cursor-pointer hover:bg-canvas transition-colors" onClick={() => setDetailEmployee(r.employee)}>
+                      <td className="px-2 py-2 font-medium text-ink">{r.employee.employeeCode}</td>
+                      <td className="px-2 py-2 font-bold text-ink">
                         {lang === "zh" ? (r.employee.chineseName || r.employee.vietnameseName) : r.employee.vietnameseName}
                       </td>
-                      <td className="px-2 py-2 text-body">
+                      <td className="px-2 py-2 font-medium text-ink">
                         {getPositionLabel(r.employee.position, lang)}
                       </td>
                       <td className="px-2 py-2">
                         <StackedStatusBadge vi={getStatusLabel(r.employee.status, lang)} className={EMP_STATUS_COLOR[r.employee.status]} />
                       </td>
-                      <td className="px-2 py-2 text-right">{r.dayShiftDays}</td>
-                      <td className="px-2 py-2 text-right">{r.nightShiftDays}</td>
-                      <td className="px-2 py-2 text-right font-medium">{r.totalDays}</td>
+                      <td className="px-2 py-2 text-right font-medium text-ink">{r.dayShiftDays}</td>
+                      <td className="px-2 py-2 text-right font-medium text-ink">{r.nightShiftDays}</td>
+                      <td className="px-2 py-2 text-right font-bold text-ink">{r.totalDays}</td>
                     </tr>
                   ))}
                   {shiftSummary.length === 0 && (
@@ -367,24 +400,21 @@ export function ReportsPage() {
                 <tbody>
                   {otByEmployee.map((r) => {
                     const emp = employeesById[r.employeeId];
-                    const high = r.totalOT >= 20;
                     return (
-                      <tr key={r.employeeId} className={`border-t border-line ${high ? "bg-bad-tint" : ""}`}>
-                        <td className="px-2 py-2 text-mute">{emp?.employeeCode || "—"}</td>
-                        <td className="px-2 py-2 font-medium text-ink">
+                      <tr key={r.employeeId} className="border-t border-line cursor-pointer hover:bg-canvas transition-colors" onClick={() => emp && setDetailEmployee(emp)}>
+                        <td className="px-2 py-2 font-medium text-ink">{emp?.employeeCode || "—"}</td>
+                        <td className="px-2 py-2 font-bold text-ink">
                           {emp ? (lang === "zh" ? (emp.chineseName || emp.vietnameseName) : emp.vietnameseName) : r.employeeId}
                         </td>
-                        <td className="px-2 py-2 text-body">
+                        <td className="px-2 py-2 font-medium text-ink">
                           {emp ? getPositionLabel(emp.position, lang) : "—"}
                         </td>
                         <td className="px-2 py-2">
                           {emp && <StackedStatusBadge vi={getStatusLabel(emp.status, lang)} className={EMP_STATUS_COLOR[emp.status]} />}
                         </td>
-                        <td className="px-2 py-2 text-right">{r.dayOT}</td>
-                        <td className="px-2 py-2 text-right">{r.nightOT}</td>
-                        <td className="px-2 py-2 text-right font-medium">
-                          <span className="inline-flex items-center gap-1">{high && <AlertTriangle size={11} className="text-bad" />}{r.totalOT}</span>
-                        </td>
+                        <td className="px-2 py-2 text-right font-medium text-ink">{r.dayOT}</td>
+                        <td className="px-2 py-2 text-right font-medium text-ink">{r.nightOT}</td>
+                        <td className="px-2 py-2 text-right font-bold text-ink">{r.totalOT}</td>
                       </tr>
                     );
                   })}
@@ -428,42 +458,126 @@ export function ReportsPage() {
           )}
         </ReportCard>
 
-        <ReportCard
-          title={t("machineReport", lang)}
-          subtitle={t("machineReportSubtitle", lang)}
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border-separate border-spacing-0" style={{ tableLayout: "fixed" }}>
-              <colgroup><col style={{ width: "16%" }} /><col style={{ width: "14%" }} /><col style={{ width: "14%" }} /><col style={{ width: "14%" }} /><col style={{ width: "14%" }} /><col style={{ width: "14%" }} /><col style={{ width: "14%" }} /></colgroup>
-              <thead className="pe-thead sticky top-0 z-10 bg-[#F8FAFC] shadow-xs">
-                <tr>
-                  <Th vi="Máy" zh="机器" en="Machine" />
-                  <Th vi="Ngày mở" zh="开机天数" en="Operating Days" right />
-                  <Th vi="Ngày dừng" zh="停机天数" en="Stopped Days" right />
-                  <Th vi="Đơn hàng" zh="订单" en="Orders" right />
-                  <Th vi="Công nhân" zh="工人" en="Workers" right />
-                  <Th vi="Ca ngày" zh="白班" en="Day" right />
-                  <Th vi="Ca đêm" zh="夜班" en="Night" right />
-                </tr>
-              </thead>
-              <tbody>
-                {machineSummary.map((r) => (
-                  <tr key={r.machine.id} className="border-t border-line">
-                    <td className="truncate px-2 py-2 font-medium text-ink">
-                      {String(r.machine.machineNumber ?? r.machine.machineName?.replace(/\D/g, "")).padStart(2, "0")}
-                    </td>
-                    <td className="px-2 py-2 text-right">{r.openDays}</td>
-                    <td className="px-2 py-2 text-right">{r.stoppedDays}</td>
-                    <td className="px-2 py-2 text-right">{r.orderCount}</td>
-                    <td className="px-2 py-2 text-right">{r.workerCount}</td>
-                    <td className="px-2 py-2 text-right">{r.dayShiftDays}</td>
-                    <td className="px-2 py-2 text-right">{r.nightShiftDays}</td>
+        <div className="grid gap-5 grid-cols-1 xl:grid-cols-2 items-start">
+          <ReportCard
+            title={t("machineReport", lang)}
+            subtitle={t("machineReportSubtitle", lang)}
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-separate border-spacing-0" style={{ tableLayout: "fixed" }}>
+                <colgroup>
+                  <col style={{ width: "18%" }} />
+                  <col style={{ width: "14%" }} />
+                  <col style={{ width: "14%" }} />
+                  <col style={{ width: "13%" }} />
+                  <col style={{ width: "15%" }} />
+                  <col style={{ width: "13%" }} />
+                  <col style={{ width: "13%" }} />
+                </colgroup>
+                <thead className="pe-thead bg-[#F8FAFC]">
+                  <tr className="h-9">
+                    <Th vi="Máy" zh="机器" en="Machine" />
+                    <Th vi="Ngày mở" zh="开机天数" en="Operating Days" right />
+                    <Th vi="Ngày dừng" zh="停机天数" en="Stopped Days" right />
+                    <Th vi="Đơn hàng" zh="订单" en="Orders" right />
+                    <Th vi="Công nhân" zh="工人" en="Workers" right />
+                    <Th vi="Ca ngày" zh="白班" en="Day" right />
+                    <Th vi="Ca đêm" zh="夜班" en="Night" right />
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </ReportCard>
+                </thead>
+                <tbody>
+                  {machineSummary.map((r) => {
+                    const num = String(r.machine.machineNumber ?? r.machine.machineName?.replace(/\D/g, "")).padStart(2, "0");
+                    return (
+                      <tr key={r.machine.id} className="border-t border-line hover:bg-canvas transition-colors h-9">
+                        <td className="truncate px-2 py-1.5">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#F4F7FE] text-[#2051A3] font-bold text-xs border border-[#E0E5F2]">
+                            {lang === "zh" ? `机台 ${num}` : `Máy ${num}`}
+                          </span>
+                        </td>
+                        <td className="px-2 py-1.5 text-right font-bold text-[#05CD99]">
+                          {r.openDays > 0 ? r.openDays : <span className="text-mute font-normal">0</span>}
+                        </td>
+                        <td className="px-2 py-1.5 text-right font-medium text-[#EE5D50]">
+                          {r.stoppedDays > 0 ? r.stoppedDays : <span className="text-mute font-normal">0</span>}
+                        </td>
+                        <td className="px-2 py-1.5 text-right font-medium text-ink">{r.orderCount}</td>
+                        <td className="px-2 py-1.5 text-right font-medium text-ink">{r.workerCount}</td>
+                        <td className="px-2 py-1.5 text-right font-medium text-ink">{r.dayShiftDays}</td>
+                        <td className="px-2 py-1.5 text-right font-medium text-ink">{r.nightShiftDays}</td>
+                      </tr>
+                    );
+                  })}
+                  {Array.from({ length: Math.max(0, Math.max(machineSummary.length, moldSummary.length) - machineSummary.length) }).map((_, idx) => (
+                    <tr key={`empty-mach-${idx}`} className="border-t border-line/30 h-9">
+                      <td className="px-2 py-1.5" colSpan={7}>&nbsp;</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </ReportCard>
+
+          <ReportCard
+            title={lang === "zh" ? "模具运行统计" : "Báo cáo theo khuôn máy"}
+            subtitle={lang === "zh" ? "所选时间段内各模具运行情况" : "Chi tiết hoạt động của từng khuôn máy"}
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-separate border-spacing-0" style={{ tableLayout: "fixed" }}>
+                <colgroup>
+                  <col style={{ width: "22%" }} />
+                  <col style={{ width: "13%" }} />
+                  <col style={{ width: "13%" }} />
+                  <col style={{ width: "13%" }} />
+                  <col style={{ width: "13%" }} />
+                  <col style={{ width: "13%" }} />
+                  <col style={{ width: "13%" }} />
+                </colgroup>
+                <thead className="pe-thead bg-[#F8FAFC]">
+                  <tr className="h-9">
+                    <Th vi="Khuôn" zh="模具" en="Mold" />
+                    <Th vi="Số máy" zh="机台数" en="Machines" right />
+                    <Th vi="Ngày mở" zh="开机天数" en="Operating Days" right />
+                    <Th vi="Đơn hàng" zh="订单" en="Orders" right />
+                    <Th vi="Công nhân" zh="工人" en="Workers" right />
+                    <Th vi="Ca ngày" zh="白班" en="Day" right />
+                    <Th vi="Ca đêm" zh="夜班" en="Night" right />
+                  </tr>
+                </thead>
+                <tbody>
+                  {moldSummary.map((r) => {
+                    const moldColor = getMoldColor(r.mold.moldName);
+                    return (
+                      <tr key={r.mold.id} className="border-t border-line hover:bg-canvas transition-colors h-9">
+                        <td className="truncate px-2 py-1.5">
+                          <span
+                            style={moldColor.style}
+                            className={`text-xs px-2 py-0.5 rounded-xs border font-semibold ${moldColor.bg || ""} ${moldColor.text || ""} ${moldColor.border || ""}`}
+                          >
+                            {r.mold.moldName}
+                          </span>
+                        </td>
+                        <td className="px-2 py-1.5 text-right font-medium text-ink">{r.machineCount}</td>
+                        <td className="px-2 py-1.5 text-right font-bold text-[#05CD99]">
+                          {r.openDays > 0 ? r.openDays : <span className="text-mute font-normal">0</span>}
+                        </td>
+                        <td className="px-2 py-1.5 text-right font-medium text-ink">{r.orderCount}</td>
+                        <td className="px-2 py-1.5 text-right font-medium text-ink">{r.workerCount}</td>
+                        <td className="px-2 py-1.5 text-right font-medium text-ink">{r.dayShiftDays}</td>
+                        <td className="px-2 py-1.5 text-right font-medium text-ink">{r.nightShiftDays}</td>
+                      </tr>
+                    );
+                  })}
+                  {Array.from({ length: Math.max(0, Math.max(machineSummary.length, moldSummary.length) - moldSummary.length) }).map((_, idx) => (
+                    <tr key={`empty-mold-${idx}`} className="border-t border-line/30 h-9">
+                      <td className="px-2 py-1.5" colSpan={7}>&nbsp;</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </ReportCard>
+        </div>
       </div>
 
       <EmployeeDetailDrawer employee={detailEmployee} onClose={() => setDetailEmployee(null)} machinesById={machinesById} ordersById={ordersById} moldsById={moldsById} schedules={db.schedules} />
