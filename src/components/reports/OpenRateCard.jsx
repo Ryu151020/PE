@@ -7,13 +7,17 @@ import { useApp } from "../../context/AppContext";
 import { t } from "../../lib/i18n";
 
 /* Machine open-rate: share of machine-shifts that actually have a worker assigned, per day (total + day/night). */
-export function OpenRateCard({ data, index = 0 }) {
+export function OpenRateCard({ data, isYearView = false, index = 0 }) {
   const { lang = "vi" } = useApp() || {};
-  const avg = (key) => (data.length ? Math.round(data.reduce((sum, d) => sum + d[key], 0) / data.length) : 0);
+  const activeEntries = data.filter((d) => d.total > 0 || d.day > 0 || d.night > 0);
+  const targetList = activeEntries.length > 0 ? activeEntries : data;
+  const avg = (key) => (targetList.length ? Math.round(targetList.reduce((sum, d) => sum + d[key], 0) / targetList.length) : 0);
   const avgTotal = avg("total"), avgDay = avg("day"), avgNight = avg("night");
 
   const title = t("openRateTitle", lang);
-  const subtitle = t("openRateSubtitle", lang);
+  const subtitle = isYearView
+    ? (lang === "zh" ? "各月平均开机率统计" : lang === "en" ? "Monthly average machine operating rate" : "Tỉ lệ mở máy trung bình theo từng tháng")
+    : t("openRateSubtitle", lang);
   const totalLabel = t("totalCol", lang);
   const dayShiftLabel = t("dayShift", lang);
   const nightShiftLabel = t("nightShift", lang);

@@ -33,38 +33,65 @@ export function ReportsPage() {
 
   const isYearView = preset === "thisYear" || (range.from && range.to && monthsBetween(range.from, range.to) >= 2);
 
+  const monthList = useMemo(() => {
+    if (!isYearView) return [];
+    const year = range.from ? range.from.slice(0, 4) : TODAY_KEY.slice(0, 4);
+    const monthNamesVi = ["Thg 1", "Thg 2", "Thg 3", "Thg 4", "Thg 5", "Thg 6", "Thg 7", "Thg 8", "Thg 9", "Thg 10", "Thg 11", "Thg 12"];
+    const monthNamesZh = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
+    const monthNamesEn = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+    let keys = [];
+    if (preset === "thisYear") {
+      for (let m = 1; m <= 12; m++) {
+        keys.push({
+          key: `${year}-${String(m).padStart(2, "0")}`,
+          m,
+          y: year,
+        });
+      }
+    } else {
+      const startY = parseInt(range.from.slice(0, 4), 10);
+      const startM = parseInt(range.from.slice(5, 7), 10);
+      const endY = parseInt(range.to.slice(0, 4), 10);
+      const endM = parseInt(range.to.slice(5, 7), 10);
+      let curY = startY;
+      let curM = startM;
+      while (curY < endY || (curY === endY && curM <= endM)) {
+        keys.push({
+          key: `${curY}-${String(curM).padStart(2, "0")}`,
+          m: curM,
+          y: String(curY),
+        });
+        curM++;
+        if (curM > 12) {
+          curM = 1;
+          curY++;
+        }
+      }
+    }
+
+    return keys.map(({ key, m, y }) => {
+      const label =
+        lang === "zh"
+          ? monthNamesZh[m - 1] || `${m}月`
+          : lang === "en"
+          ? monthNamesEn[m - 1] || `M${m}`
+          : monthNamesVi[m - 1] || `Thg ${m}`;
+      const fullLabel =
+        lang === "zh"
+          ? `${y}年${m}月`
+          : lang === "en"
+          ? `${monthNamesEn[m - 1]} ${y}`
+          : `Tháng ${m}/${y}`;
+      return { key, label, fullLabel };
+    });
+  }, [isYearView, preset, range.from, range.to, lang]);
+
   const turnoverChartData = useMemo(() => {
     if (resignedInRange.length === 0) return [];
 
-    if (isYearView) {
-      const year = range.from ? range.from.slice(0, 4) : TODAY_KEY.slice(0, 4);
-      const monthNamesVi = ["Thg 1", "Thg 2", "Thg 3", "Thg 4", "Thg 5", "Thg 6", "Thg 7", "Thg 8", "Thg 9", "Thg 10", "Thg 11", "Thg 12"];
-      const monthNamesZh = ["1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
-      const monthNamesEn = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-      let monthKeys = [];
-      if (preset === "thisYear") {
-        for (let m = 1; m <= 12; m++) {
-          monthKeys.push(`${year}-${String(m).padStart(2, "0")}`);
-        }
-      } else {
-        const startY = parseInt(range.from.slice(0, 4), 10);
-        const startM = parseInt(range.from.slice(5, 7), 10);
-        const endY = parseInt(range.to.slice(0, 4), 10);
-        const endM = parseInt(range.to.slice(5, 7), 10);
-        let curY = startY;
-        let curM = startM;
-        while (curY < endY || (curY === endY && curM <= endM)) {
-          monthKeys.push(`${curY}-${String(curM).padStart(2, "0")}`);
-          curM++;
-          if (curM > 12) {
-            curM = 1;
-            curY++;
-          }
-        }
-      }
-
-      const monthCounts = Object.fromEntries(monthKeys.map((k) => [k, 0]));
+    if (isYearView && monthList.length > 0) {
+      const monthCounts = Object.fromEntries(monthList.map((m) => [m.key, 0]));
       resignedInRange.forEach((e) => {
         if (!e.resignDate) return;
         const k = e.resignDate.slice(0, 7);
@@ -75,29 +102,11 @@ export function ReportsPage() {
         }
       });
 
-      return Object.entries(monthCounts).map(([k, count]) => {
-        const [yStr, mStr] = k.split("-");
-        const mNum = parseInt(mStr, 10);
-        const label =
-          lang === "zh"
-            ? monthNamesZh[mNum - 1] || `${mNum}月`
-            : lang === "en"
-            ? monthNamesEn[mNum - 1] || `M${mNum}`
-            : monthNamesVi[mNum - 1] || `Thg ${mNum}`;
-
-        const fullLabel =
-          lang === "zh"
-            ? `${yStr}年${mNum}月`
-            : lang === "en"
-            ? `${monthNamesEn[mNum - 1]} ${yStr}`
-            : `Tháng ${mNum}/${yStr}`;
-
-        return {
-          date: label,
-          fullLabel,
-          count,
-        };
-      });
+      return monthList.map((m) => ({
+        date: m.label,
+        fullLabel: m.fullLabel,
+        count: monthCounts[m.key] || 0,
+      }));
     }
 
     // Default: Group by day for day/week/month queries
@@ -112,7 +121,7 @@ export function ReportsPage() {
         fullLabel: toDisplay(d),
         count: c,
       }));
-  }, [resignedInRange, isYearView, preset, range.from, range.to, lang]);
+  }, [resignedInRange, isYearView, monthList]);
   const tenureBuckets = useMemo(() => {
     const buckets = ["< 1 tháng", "1-3 tháng", "3-6 tháng", "6-12 tháng", "1-2 năm", "> 2 năm"];
     const bucketOf = (join, end) => { const months = monthsBetween(join, end || TODAY_KEY); if (months < 1) return buckets[0]; if (months < 3) return buckets[1]; if (months < 6) return buckets[2]; if (months < 12) return buckets[3]; if (months < 24) return buckets[4]; return buckets[5]; };
@@ -152,9 +161,104 @@ export function ReportsPage() {
     return Object.values(m).map((r) => ({ ...r, totalOT: Math.round((r.dayOT + r.nightOT) * 10) / 10, dayOT: Math.round(r.dayOT * 10) / 10, nightOT: Math.round(r.nightOT * 10) / 10 })).sort((a, b) => b.totalOT - a.totalOT);
   }, [db.schedules, range]);
 
-  const trend = useMemo(() => Object.entries(db.schedules).filter(([d, day]) => day && inRange(d, range.from, range.to)).sort(([a], [b]) => (a < b ? -1 : 1)).map(([d, day]) => { const ids = new Set(); Object.values(day.entries).forEach((e) => { [...(e.dayShift?.workers || []), ...(e.dayShift?.technicians || []), ...(e.dayShift?.otherWorkers || []), ...(e.nightShift?.workers || []), ...(e.nightShift?.technicians || []), ...(e.nightShift?.otherWorkers || [])].forEach((id) => ids.add(id)); }); return { date: toDisplay(d).slice(0, 5), count: ids.size }; }), [db.schedules, range]);
+  const trend = useMemo(() => {
+    if (isYearView && monthList.length > 0) {
+      return monthList.map(({ key, label, fullLabel }) => {
+        let sumStaff = 0;
+        let dayCount = 0;
+        Object.entries(db.schedules).forEach(([d, day]) => {
+          if (!day || !d.startsWith(key) || !inRange(d, range.from, range.to)) return;
+          const ids = new Set();
+          Object.values(day.entries).forEach((e) => {
+            [
+              ...(e.dayShift?.workers || []),
+              ...(e.dayShift?.technicians || []),
+              ...(e.dayShift?.otherWorkers || []),
+              ...(e.nightShift?.workers || []),
+              ...(e.nightShift?.technicians || []),
+              ...(e.nightShift?.otherWorkers || []),
+            ].forEach((id) => ids.add(id));
+          });
+          if (ids.size > 0) {
+            sumStaff += ids.size;
+            dayCount++;
+          }
+        });
+        return {
+          date: label,
+          fullLabel,
+          count: dayCount > 0 ? Math.round(sumStaff / dayCount) : 0,
+        };
+      });
+    }
 
-  const openRate = useMemo(() => Object.entries(db.schedules).filter(([d, day]) => day && inRange(d, range.from, range.to)).sort(([a], [b]) => (a < b ? -1 : 1)).map(([d, day]) => { const k = computeKpis(day, db.machines, db.employees); const pct = (n, t) => (t > 0 ? Math.round((n / t) * 1000) / 10 : 0); return { date: toDisplay(d).slice(0, 5), total: pct(k.open, k.totalSlots), day: pct(k.openDay, k.total), night: pct(k.openNight, k.total) }; }), [db.schedules, db.machines, db.employees, range]);
+    return Object.entries(db.schedules)
+      .filter(([d, day]) => day && inRange(d, range.from, range.to))
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([d, day]) => {
+        const ids = new Set();
+        Object.values(day.entries).forEach((e) => {
+          [
+            ...(e.dayShift?.workers || []),
+            ...(e.dayShift?.technicians || []),
+            ...(e.dayShift?.otherWorkers || []),
+            ...(e.nightShift?.workers || []),
+            ...(e.nightShift?.technicians || []),
+            ...(e.nightShift?.otherWorkers || []),
+          ].forEach((id) => ids.add(id));
+        });
+        return { date: toDisplay(d).slice(0, 5), fullLabel: toDisplay(d), count: ids.size };
+      });
+  }, [db.schedules, range, isYearView, monthList]);
+
+  const openRate = useMemo(() => {
+    if (isYearView && monthList.length > 0) {
+      return monthList.map(({ key, label, fullLabel }) => {
+        let sumOpenSlots = 0;
+        let sumTotalSlots = 0;
+        let sumOpenDay = 0;
+        let sumTotalDay = 0;
+        let sumOpenNight = 0;
+        let sumTotalNight = 0;
+
+        Object.entries(db.schedules).forEach(([d, day]) => {
+          if (!day || !d.startsWith(key) || !inRange(d, range.from, range.to)) return;
+          const k = computeKpis(day, db.machines, db.employees);
+          sumOpenSlots += k.open;
+          sumTotalSlots += k.totalSlots;
+          sumOpenDay += k.openDay;
+          sumTotalDay += k.total;
+          sumOpenNight += k.openNight;
+          sumTotalNight += k.total;
+        });
+
+        const pct = (n, t) => (t > 0 ? Math.round((n / t) * 1000) / 10 : 0);
+
+        return {
+          date: label,
+          fullLabel,
+          total: pct(sumOpenSlots, sumTotalSlots),
+          day: pct(sumOpenDay, sumTotalDay),
+          night: pct(sumOpenNight, sumTotalNight),
+        };
+      });
+    }
+
+    return Object.entries(db.schedules)
+      .filter(([d, day]) => day && inRange(d, range.from, range.to))
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([d, day]) => {
+        const k = computeKpis(day, db.machines, db.employees);
+        const pct = (n, t) => (t > 0 ? Math.round((n / t) * 1000) / 10 : 0);
+        return {
+          date: toDisplay(d).slice(0, 5),
+          fullLabel: toDisplay(d),
+          total: pct(k.open, k.totalSlots),
+          day: pct(k.openDay, k.total),
+          night: pct(k.openNight, k.total),
+        };
+      });
+  }, [db.schedules, db.machines, db.employees, range, isYearView, monthList]);
 
   const machineSummary = useMemo(() => db.machines.map((m) => {
     let openDays = 0, stoppedDays = 0, dayShiftDays = 0, nightShiftDays = 0; const orderSet = new Set(), workerSet = new Set();
@@ -429,11 +533,10 @@ export function ReportsPage() {
           </ReportCard>
         </div>
 
-        <OpenRateCard data={openRate} index={4} />
-
         <ReportCard
+          index={4}
           title={t("headcountTrend", lang)}
-          subtitle={t("headcountTrendSubtitle", lang)}
+          subtitle={isYearView ? (lang === "zh" ? "每月工作日平均在岗人员" : lang === "en" ? "Average personnel working per day by month" : "Trung bình nhân sự làm việc mỗi ngày theo tháng") : t("headcountTrendSubtitle", lang)}
         >
           {trend.length === 0 ? (
             <div className="py-10 text-center text-sm text-mute">{t("noData", lang)}</div>
@@ -457,6 +560,8 @@ export function ReportsPage() {
             </div>
           )}
         </ReportCard>
+
+        <OpenRateCard data={openRate} isYearView={isYearView} index={5} />
 
         <div className="grid gap-5 grid-cols-1 xl:grid-cols-2 items-start">
           <ReportCard
