@@ -119,10 +119,31 @@ export function useLocalDb() {
         const validSchedules = { ...(remoteData.schedules || {}) };
 
         const cleanedOrders = validOrders.map(cleanOrder);
+
+        // Merge with any local additions that might not have reached Supabase yet
+        const localSaved = storage.get(LOCAL_DB_KEY) || {};
+        const remoteEmpIds = new Set(validEmployees.map((e) => e.id));
+        const pendingLocalEmps = (localSaved.employees || []).filter(
+          (e) => e && e.id && !remoteEmpIds.has(e.id) && !deletedEmpIds.has(e.id)
+        );
+        const mergedEmployees = [...validEmployees, ...pendingLocalEmps];
+
+        const remoteOrderIds = new Set(cleanedOrders.map((o) => o.id));
+        const pendingLocalOrders = (localSaved.orders || []).filter(
+          (o) => o && o.id && !remoteOrderIds.has(o.id) && !deletedOrderIds.has(o.id)
+        );
+        const mergedOrders = [...cleanedOrders, ...pendingLocalOrders];
+
+        const remoteMoldIds = new Set(validMolds.map((m) => m.id));
+        const pendingLocalMolds = (localSaved.molds || []).filter(
+          (m) => m && m.id && !remoteMoldIds.has(m.id) && !deletedMoldIds.has(m.id)
+        );
+        const mergedMolds = [...validMolds, ...pendingLocalMolds];
+
         const freshData = {
-          employees: validEmployees,
-          molds: validMolds,
-          orders: cleanedOrders,
+          employees: mergedEmployees,
+          molds: mergedMolds,
+          orders: mergedOrders,
           machines: remoteData.machines || [],
           schedules: validSchedules,
         };
@@ -130,6 +151,17 @@ export function useLocalDb() {
         setDbState(freshData);
         prevDbRef.current = freshData;
         storage.set(LOCAL_DB_KEY, freshData);
+
+        // Immediately push any pending local items to Supabase
+        if (pendingLocalEmps.length > 0) {
+          syncTableToSupabase("employees", pendingLocalEmps.map(employeeToDb));
+        }
+        if (pendingLocalOrders.length > 0) {
+          syncTableToSupabase("orders", pendingLocalOrders.map(orderToDb));
+        }
+        if (pendingLocalMolds.length > 0) {
+          syncTableToSupabase("molds", pendingLocalMolds.map(moldToDb));
+        }
 
         setSyncStatus("connected");
         setLastSyncedAt(Date.now());
@@ -475,11 +507,22 @@ export function useLocalDb() {
       // 1. Employees changed
       if (prev.employees !== next.employees) {
         const deletedEmpIds = new Set(storage.get(DELETED_EMPLOYEES_KEY) || []);
+        let delChanged = false;
+        (next.employees || []).forEach((e) => {
+          if (deletedEmpIds.has(e.id)) {
+            deletedEmpIds.delete(e.id);
+            delChanged = true;
+          }
+        });
+        if (delChanged) {
+          storage.set(DELETED_EMPLOYEES_KEY, Array.from(deletedEmpIds));
+        }
+
         const prevMap = new Map((prev.employees || []).map((e) => [e.id, e]));
         const changed = (next.employees || []).filter((e) => {
           if (deletedEmpIds.has(e.id)) return false;
           const p = prevMap.get(e.id);
-          return p && JSON.stringify(p) !== JSON.stringify(e);
+          return !p || JSON.stringify(p) !== JSON.stringify(e);
         });
         if (changed.length > 0) {
           await syncTableToSupabase("employees", changed.map(employeeToDb));
@@ -499,11 +542,22 @@ export function useLocalDb() {
       // 2. Molds changed
       if (prev.molds !== next.molds) {
         const deletedMoldIds = new Set(storage.get(DELETED_MOLDS_KEY) || []);
+        let delChanged = false;
+        (next.molds || []).forEach((m) => {
+          if (deletedMoldIds.has(m.id)) {
+            deletedMoldIds.delete(m.id);
+            delChanged = true;
+          }
+        });
+        if (delChanged) {
+          storage.set(DELETED_MOLDS_KEY, Array.from(deletedMoldIds));
+        }
+
         const prevMap = new Map((prev.molds || []).map((m) => [m.id, m]));
         const changed = (next.molds || []).filter((m) => {
           if (deletedMoldIds.has(m.id)) return false;
           const p = prevMap.get(m.id);
-          return p && JSON.stringify(p) !== JSON.stringify(m);
+          return !p || JSON.stringify(p) !== JSON.stringify(m);
         });
         if (changed.length > 0) {
           await syncTableToSupabase("molds", changed.map(moldToDb));
@@ -530,11 +584,22 @@ export function useLocalDb() {
       // 4. Orders changed
       if (prev.orders !== next.orders) {
         const deletedOrderIds = new Set(storage.get(DELETED_ORDERS_KEY) || []);
+        let delChanged = false;
+        (next.orders || []).forEach((o) => {
+          if (deletedOrderIds.has(o.id)) {
+            deletedOrderIds.delete(o.id);
+            delChanged = true;
+          }
+        });
+        if (delChanged) {
+          storage.set(DELETED_ORDERS_KEY, Array.from(deletedOrderIds));
+        }
+
         const prevMap = new Map((prev.orders || []).map((o) => [o.id, o]));
         const changed = (next.orders || []).filter((o) => {
           if (deletedOrderIds.has(o.id)) return false;
           const p = prevMap.get(o.id);
-          return p && JSON.stringify(p) !== JSON.stringify(o);
+          return !p || JSON.stringify(p) !== JSON.stringify(o);
         });
         if (changed.length > 0) {
           await syncTableToSupabase("orders", changed.map(orderToDb));
